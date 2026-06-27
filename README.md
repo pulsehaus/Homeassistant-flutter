@@ -33,7 +33,7 @@ first-class web build.
 ## Getting Started
 
 ```bash
-git clone https://github.com/nicolashubert07-cmd/Homeassistant-flutter.git
+git clone https://github.com/pulsehaus/Homeassistant-flutter.git
 cd Homeassistant-flutter
 flutter pub get
 flutter run
