@@ -17,15 +17,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      # Version Flutter épinglée pour des résultats reproductibles.
-      # À garder en phase avec la version FVM du projet (.fvmrc).
+      # Source unique de vérité : la version Flutter est lue depuis .fvmrc
+      # (le même fichier que FVM utilise en local). Pas besoin d'installer FVM
+      # sur le runner — on passe juste la version à l'action Flutter.
+      - name: Read Flutter version from .fvmrc
+        id: fvm
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.41.6
-          channel: stable
+          flutter-version: ${{ steps.fvm.outputs.version }}
           cache: true
 
       - name: Install dependencies
