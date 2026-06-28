@@ -1,4 +1,4 @@
-// This is a basic Flutter widget test.
+// Smoke test for the app shell and the Riverpod reference example.
 //
 // To perform an interaction with a widget in your test, use the WidgetTester
 // utility in the flutter_test package. For example, you can send tap and scroll
@@ -6,25 +6,26 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:homeassistant_flutter/main.dart';
+import 'package:homeassistant_flutter/app/app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Home shell renders and the Riverpod counter increments', (
+    WidgetTester tester,
+  ) async {
+    // ProviderScope is required for Riverpod providers to resolve.
+    await tester.pumpWidget(const ProviderScope(child: HomeAssistantApp()));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // The app shell is shown and the counter starts at 0.
+    expect(find.text('Foundation ready'), findsOneWidget);
+    expect(find.text('Riverpod example — counter: 0'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
+    // Tapping the '+' button drives the provider and rebuilds the UI.
     await tester.tap(find.byIcon(Icons.add));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('Riverpod example — counter: 1'), findsOneWidget);
   });
 }
