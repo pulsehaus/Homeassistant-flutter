@@ -42,6 +42,22 @@ flutter run
 You will need a running Home Assistant instance and a long-lived access token
 (Profile → Security → Long-lived access tokens).
 
+## Architecture
+
+The app uses a **feature-first** structure under `lib/` and
+[Riverpod](https://riverpod.dev) for state management. See
+[docs/architecture.md](docs/architecture.md) for the folder layout, the
+state-management pattern and the conventions every feature should follow.
+
+```
+lib/
+  main.dart       # entry point (ProviderScope)
+  app/            # app shell (MaterialApp, global wiring)
+  core/           # app-wide infrastructure (theme, config, routing…)
+  features/       # one self-contained folder per feature
+  shared/         # cross-feature widgets and utilities
+```
+
 ## Contributing
 
 Contributions are welcome. Please open an issue to discuss significant changes
