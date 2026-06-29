@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../shared/presentation/app_page.dart';
 import '../application/sample_chart_data.dart';
 import '../domain/chart_series.dart';
 import 'time_series_chart.dart';
@@ -8,10 +9,10 @@ import 'time_series_chart.dart';
 /// data (see [SampleChartData]).
 ///
 /// It exists to prove the chart pipeline end to end — generic data → ECharts
-/// config → rendered chart — and to show theming and the line/bar switch. Wiring
-/// it to real HA entity history (via the communication layer, #2) and dropping
-/// it into the shared page template (#3) are follow-ups; the wrapper's plain
-/// data input means those changes won't touch the chart itself.
+/// config → rendered chart — and to show theming and the line/bar switch. It is
+/// now built on the shared [AppPage] template (#3), so it shares the app
+/// bar/body structure with every other feature screen; wiring it to real HA
+/// entity history (via the communication layer, #2) is the remaining follow-up.
 class ChartExamplePage extends StatefulWidget {
   const ChartExamplePage({super.key});
 
@@ -33,32 +34,30 @@ class _ChartExamplePageState extends State<ChartExamplePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Charts'),
-        actions: [
-          // Toggle line/bar to demonstrate both mappings against the same
-          // generic data type.
-          SegmentedButton<ChartType>(
-            segments: const [
-              ButtonSegment(
-                value: ChartType.line,
-                icon: Icon(Icons.show_chart),
-                label: Text('Line'),
-              ),
-              ButtonSegment(
-                value: ChartType.bar,
-                icon: Icon(Icons.bar_chart),
-                label: Text('Bar'),
-              ),
-            ],
-            selected: {_type},
-            onSelectionChanged: (selection) =>
-                setState(() => _type = selection.first),
-          ),
-          const SizedBox(width: 12),
-        ],
-      ),
+    return AppPage(
+      title: 'Charts',
+      actions: [
+        // Toggle line/bar to demonstrate both mappings against the same
+        // generic data type.
+        SegmentedButton<ChartType>(
+          segments: const [
+            ButtonSegment(
+              value: ChartType.line,
+              icon: Icon(Icons.show_chart),
+              label: Text('Line'),
+            ),
+            ButtonSegment(
+              value: ChartType.bar,
+              icon: Icon(Icons.bar_chart),
+              label: Text('Bar'),
+            ),
+          ],
+          selected: {_type},
+          onSelectionChanged: (selection) =>
+              setState(() => _type = selection.first),
+        ),
+        const SizedBox(width: 12),
+      ],
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

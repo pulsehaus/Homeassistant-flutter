@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../charts/presentation/chart_example_page.dart';
+import '../../../shared/presentation/app_page.dart';
 import '../application/counter_controller.dart';
 
-/// Minimal home screen acting as the app shell placeholder until real
-/// features (connection, dashboards) are built.
+/// Minimal home screen, now built on the shared [AppPage] template so it shares
+/// the app bar / body structure (and the loading/error/empty surfaces, should
+/// it later load real data) with every other feature screen.
 ///
 /// It doubles as the worked example for the Riverpod pattern: it `watch`es
 /// [counterControllerProvider] to rebuild when the value changes and `read`s
@@ -18,8 +19,14 @@ class HomePage extends ConsumerWidget {
     final count = ref.watch(counterControllerProvider);
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Home Assistant')),
+    return AppPage(
+      title: 'Home Assistant',
+      floatingActionButton: FloatingActionButton(
+        onPressed: () =>
+            ref.read(counterControllerProvider.notifier).increment(),
+        tooltip: 'Increment',
+        child: const Icon(Icons.add),
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -30,24 +37,8 @@ class HomePage extends ConsumerWidget {
               'Riverpod example — counter: $count',
               style: theme.textTheme.bodyMedium,
             ),
-            const SizedBox(height: 24),
-            FilledButton.tonalIcon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const ChartExamplePage(),
-                ),
-              ),
-              icon: const Icon(Icons.insights),
-              label: const Text('Charts example'),
-            ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () =>
-            ref.read(counterControllerProvider.notifier).increment(),
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
