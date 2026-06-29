@@ -9,6 +9,7 @@ import '../features/connection/domain/connection_credentials.dart';
 import '../features/connection/domain/ha_connection_config.dart';
 import '../features/connection/domain/server_url.dart';
 import '../features/connection/presentation/connection_page.dart';
+import '../features/entities/presentation/entities_overview_page.dart';
 import '../features/home/presentation/home_page.dart';
 import 'app_shell.dart';
 
@@ -78,6 +79,12 @@ class _ConnectedApp extends StatelessWidget {
             builder: _buildHome,
           ),
           ShellDestination(
+            label: 'Entities',
+            icon: Icons.dashboard_outlined,
+            selectedIcon: Icons.dashboard,
+            builder: _buildEntities,
+          ),
+          ShellDestination(
             label: 'History',
             icon: Icons.insights_outlined,
             selectedIcon: Icons.insights,
@@ -89,6 +96,9 @@ class _ConnectedApp extends StatelessWidget {
   }
 
   static Widget _buildHome(BuildContext context) => const HomePage();
+
+  static Widget _buildEntities(BuildContext context) =>
+      const EntitiesOverviewPage();
 
   static Widget _buildHistory(BuildContext context) =>
       const EntityHistoryPage();
