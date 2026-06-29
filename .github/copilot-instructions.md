@@ -1,0 +1,15 @@
+# GitHub Copilot instructions
+
+The development rules for this repository live in a single source of truth,
+[`AGENTS.md`](../AGENTS.md) at the repo root. Read and follow it for everything:
+FVM usage, architecture/SOLID layering, testing (unit + integration),
+formatting, Conventional Commits referencing the issue, the auto-close caveat
+(only on `main`, not `develop`), the assignment-before-work rule, and the
+issue/label taxonomy.
+
+The rules are intentionally **not** duplicated here — when they change, edit
+`AGENTS.md`, not this file.
+
+Reminder: run every Flutter/Dart command through FVM (`fvm flutter analyze`,
+`fvm flutter test`, `fvm dart format .`) so you use the SDK version pinned in
+`.fvmrc`.
