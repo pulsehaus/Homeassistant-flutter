@@ -32,6 +32,25 @@ jobs:
           flutter-version: ${{ steps.fvm.outputs.version }}
           cache: true
 
+      # Garde-fou anti-drift : on vérifie que la version Flutter réellement
+      # installée correspond bien à celle épinglée dans .fvmrc. Sans ça, un
+      # cache obsolète ou un changement de l'action pourrait faire tourner la CI
+      # sur une autre version que celle utilisée en local via FVM.
+      # On lit la version installée via `flutter --version --machine` (JSON
+      # stable, champ `frameworkVersion`) pour éviter de parser du texte libre
+      # et ignorer le suffixe de channel.
+      - name: Verify Flutter version matches .fvmrc
+        run: |
+          expected="${{ steps.fvm.outputs.version }}"
+          actual="$(flutter --version --machine | jq -r .frameworkVersion)"
+          echo "Expected (.fvmrc): $expected"
+          echo "Actual (flutter --version): $actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::Flutter version mismatch — expected $expected (from .fvmrc) but found $actual installed."
+            exit 1
+          fi
+          echo "Flutter version matches .fvmrc ($expected)."
+
       - name: Install dependencies
         run: flutter pub get
 
