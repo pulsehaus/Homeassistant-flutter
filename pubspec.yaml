@@ -40,6 +40,16 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # Cross-platform WebSocket transport (web, mobile, desktop) for the Home
+  # Assistant WebSocket API. Maintained by the Dart/Flutter team and used by the
+  # connection layer in lib/features/connection/. See docs/architecture.md.
+  web_socket_channel: ^3.0.3
+
+  # HTTP client for the Home Assistant REST API (endpoints not covered by the
+  # WebSocket API). Its package:http/testing.dart MockClient also lets the REST
+  # client be unit-tested without a real server.
+  http: ^1.6.0
+
   # Charting via Apache ECharts. graphify renders charts inside a WebView
   # (it pulls in webview_flutter), turning an ECharts JSON option map into an
   # interactive chart. See lib/features/charts. Platform setup notes are in
@@ -56,6 +66,11 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # Deterministic virtual clock for unit-testing the reconnect backoff timers
+  # without real delays. Already a transitive dependency of flutter_test;
+  # declared here so we can import it directly.
+  fake_async: ^1.3.3
 
   # End-to-end flow tests under integration_test/.
   integration_test:
