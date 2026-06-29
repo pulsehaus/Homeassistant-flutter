@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/presentation/app_page.dart';
 import '../../connection/domain/entity_state.dart';
 import '../application/entities_providers.dart';
+import '../application/entity_toggle_controller.dart';
 import '../domain/entity_group.dart';
+import '../domain/entity_toggle.dart';
 
 /// Overview screen listing every known entity from the live store, grouped into
 /// per-domain sections (`light`, `sensor`, `switch`, …).
@@ -118,29 +120,73 @@ class _DomainHeader extends StatelessWidget {
 }
 
 /// One entity row: friendly name (or entity id) as the title, the entity id as a
-/// subtitle, and the current state on the trailing edge.
-class _EntityTile extends StatelessWidget {
+/// subtitle, and a trailing control.
+///
+/// For controllable entities ([EntityToggle.isToggleable] — `light`, `switch`)
+/// the trailing edge is a [Switch] that issues a `call_service`; for everything
+/// else it's the read-only state text. A [ConsumerWidget] so the toggle can read
+/// the [entityToggleControllerProvider].
+class _EntityTile extends ConsumerStatefulWidget {
   const _EntityTile({required this.entity});
 
   final EntityState entity;
 
   @override
+  ConsumerState<_EntityTile> createState() => _EntityTileState();
+}
+
+class _EntityTileState extends ConsumerState<_EntityTile> {
+  /// Optimistic position shown while a toggle is in flight. Cleared once the
+  /// real `state_changed` arrives (or on failure), so the switch always
+  /// reconciles with the entity's true state.
+  bool? _pending;
+
+  EntityState get _entity => widget.entity;
+
+  @override
+  void didUpdateWidget(_EntityTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A fresh state from the live store has landed: drop the optimistic value
+    // once it matches what we asked for (or whenever a new state supersedes it).
+    if (_pending != null && EntityToggle.isOn(_entity) == _pending) {
+      _pending = null;
+    }
+  }
+
+  Future<void> _onToggle(bool on) async {
+    setState(() => _pending = on);
+    final result = await ref
+        .read(entityToggleControllerProvider)
+        .toggle(_entity, on: on);
+    if (!mounted) return;
+    if (!result.isSuccess) {
+      // Roll the optimistic position back and surface the reason.
+      setState(() => _pending = null);
+      final message = (result as ToggleFailure).message;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final name = entity.friendlyName;
+    final name = _entity.friendlyName;
     final hasName = name != null && name.trim().isNotEmpty;
+    final toggleable = EntityToggle.isToggleable(_entity);
 
     return ListTile(
       dense: true,
       title: Text(
-        hasName ? name : entity.entityId,
+        hasName ? name : _entity.entityId,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       // Only show the id as a subtitle when it isn't already the title.
       subtitle: hasName
           ? Text(
-              entity.entityId,
+              _entity.entityId,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
@@ -148,12 +194,17 @@ class _EntityTile extends StatelessWidget {
               ),
             )
           : null,
-      trailing: Text(
-        entity.state,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      trailing: toggleable
+          ? Switch(
+              value: _pending ?? EntityToggle.isOn(_entity),
+              onChanged: _onToggle,
+            )
+          : Text(
+              _entity.state,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
     );
   }
 }

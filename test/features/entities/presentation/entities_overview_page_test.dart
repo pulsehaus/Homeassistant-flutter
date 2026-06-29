@@ -60,10 +60,13 @@ void main() {
     expect(find.text('Temperature'), findsOneWidget);
     expect(find.text('switch.fan'), findsWidgets);
 
-    // Current states are shown.
-    expect(find.text('on'), findsOneWidget);
+    // Controllable entities (light, switch) render a toggle reflecting state;
+    // the sensor still shows its reading as text.
+    expect(find.byType(Switch), findsNWidgets(2)); // light + switch
+    final switches = tester.widgetList<Switch>(find.byType(Switch)).toList();
+    expect(switches.where((s) => s.value), hasLength(1)); // light.kitchen on
+    expect(switches.where((s) => !s.value), hasLength(1)); // switch.fan off
     expect(find.text('21.4'), findsOneWidget);
-    expect(find.text('off'), findsOneWidget);
   });
 
   testWidgets('shows the empty surface when there are no entities', (
@@ -106,15 +109,18 @@ void main() {
 
     await tester.pumpWidget(_harness(controller.stream));
 
-    controller.add(_store([_entity('light.kitchen', state: 'off')]));
+    // Use a non-controllable entity here so the row renders its state as text
+    // (controllable lights/switches now render a Switch — that live-update path
+    // is covered in entity_toggle_widget_test.dart).
+    controller.add(_store([_entity('sensor.temperature', state: '20.1')]));
     await tester.pump();
-    expect(find.text('off'), findsOneWidget);
-    expect(find.text('on'), findsNothing);
+    expect(find.text('20.1'), findsOneWidget);
+    expect(find.text('21.5'), findsNothing);
 
-    // A state_changed event flips the light on.
-    controller.add(_store([_entity('light.kitchen', state: 'on')]));
+    // A state_changed event updates the reading.
+    controller.add(_store([_entity('sensor.temperature', state: '21.5')]));
     await tester.pump();
-    expect(find.text('on'), findsOneWidget);
-    expect(find.text('off'), findsNothing);
+    expect(find.text('21.5'), findsOneWidget);
+    expect(find.text('20.1'), findsNothing);
   });
 }
