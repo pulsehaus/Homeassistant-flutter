@@ -61,18 +61,29 @@ expectations every change must respect.
 
 ## Testing — unit *and* integration
 
-Tests are required for new logic, at two levels:
+Tests are required for new logic. Pick the level **and the directory** by what
+the test needs to run:
 
-- **Unit tests** (under `test/`) for isolated logic with mocked
-  dependencies/transport — e.g. a controller, a repository, a parser.
-- **Integration tests** (under `integration_test/`) for end-to-end flows — a
-  full screen or a feature exercised top to bottom, against a real or faked
-  server. Name the concrete flow under test, not just "add integration tests".
+- **Unit tests** (`test/`) for isolated logic with mocked dependencies/transport
+  — e.g. a controller, a repository, a parser.
+- **Headless integration tests** (`test/`) for end-to-end flows that don't need a
+  device — e.g. the data/network layer driven against a real or faked local
+  server (a pure-Dart test with no widget binding). These run with
+  `fvm flutter test` and in CI. Name the concrete flow under test.
+- **Device-driven integration tests** (`integration_test/`) for flows that drive
+  the running app/UI — they need a connected device or emulator (or
+  `flutter drive`) and are **not** run by plain `fvm flutter test` or CI yet
+  (see the CI-wiring follow-up issue). Name the concrete flow under test.
 - For a **bug fix**, include a **regression test** that fails before the fix and
   passes after.
 
-Definition of done for any code change: `fvm flutter analyze`, `fvm flutter test`
-and the `integration_test` suite all pass.
+Why the split: Flutter's `integration_test/` directory requires a connected
+device, so a headless network/integration test placed there can't run in CI —
+put those under `test/` instead.
+
+Definition of done for any code change: `fvm dart format .`, `fvm flutter analyze`
+and `fvm flutter test` (the headless suite) all pass. Device-driven
+`integration_test/` suites are run separately when a device is available.
 
 ## Formatting & lint
 
