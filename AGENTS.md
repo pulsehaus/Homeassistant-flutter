@@ -109,6 +109,10 @@ and `fvm flutter test` (the headless suite) all pass. Device-driven
   because that PR didn't target `main`. Until then, track progress with the
   `status:` labels (`in progress` → `needs review`) and close the issue manually
   if needed.
+- **Only the maintainer merges.** Contributors (human or AI) open PRs against
+  `develop` and wait for review — **don't merge your own PR**. For now,
+  [@pulsehaus](https://github.com/pulsehaus) reviews and merges every PR, then
+  closes the linked issue manually.
 
 ## Working on an issue — assignment first
 

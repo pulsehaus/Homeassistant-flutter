@@ -66,8 +66,12 @@ lib/
 
 ## Contributing
 
-Contributions are welcome. Please open an issue to discuss significant changes
-before submitting a pull request.
+Contributions are welcome! New here? See [`CONTRIBUTING.md`](CONTRIBUTING.md) for
+setup and the workflow, and pick an issue labelled
+[**`good first issue`**](https://github.com/pulsehaus/Homeassistant-flutter/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+to get started. Please open an issue to discuss significant changes before
+submitting a pull request. PRs target `develop` and are reviewed/merged by the
+maintainer.
 
 Before you start, read [`AGENTS.md`](AGENTS.md) — the single source of truth for
 the project's development rules (FVM usage, SOLID/clean-architecture layering,
