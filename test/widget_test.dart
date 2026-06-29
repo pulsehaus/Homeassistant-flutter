@@ -59,18 +59,18 @@ void main() {
     expect(find.text('Riverpod example — counter: 1'), findsOneWidget);
   });
 
-  testWidgets('Switching to the Charts destination shows the charts screen', (
+  testWidgets('Switching to the History destination shows the history screen', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(appWithStoredCredentials());
     await tester.pumpAndSettle();
 
-    // Charts is the second navigation destination.
-    await tester.tap(find.text('Charts').last);
+    // History is the second navigation destination.
+    await tester.tap(find.text('History').last);
     await tester.pump();
 
-    // The charts screen's line/bar toggle is now visible.
-    expect(find.text('Line'), findsOneWidget);
-    expect(find.text('Bar'), findsOneWidget);
+    // No entity states stream in under the test (the WebSocket never
+    // connects), so the real-history screen shows its shared empty surface.
+    expect(find.textContaining('No numeric sensor'), findsOneWidget);
   });
 }

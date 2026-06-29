@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme/app_theme.dart';
-import '../features/charts/presentation/chart_example_page.dart';
+import '../features/charts/presentation/entity_history_page.dart';
 import '../features/connection/application/connection_providers.dart';
 import '../features/connection/application/connection_session_controller.dart';
 import '../features/connection/domain/connection_credentials.dart';
@@ -78,10 +78,10 @@ class _ConnectedApp extends StatelessWidget {
             builder: _buildHome,
           ),
           ShellDestination(
-            label: 'Charts',
+            label: 'History',
             icon: Icons.insights_outlined,
             selectedIcon: Icons.insights,
-            builder: _buildCharts,
+            builder: _buildHistory,
           ),
         ],
       ),
@@ -90,7 +90,8 @@ class _ConnectedApp extends StatelessWidget {
 
   static Widget _buildHome(BuildContext context) => const HomePage();
 
-  static Widget _buildCharts(BuildContext context) => const ChartExamplePage();
+  static Widget _buildHistory(BuildContext context) =>
+      const EntityHistoryPage();
 }
 
 /// Minimal splash shown while the stored credentials are read from secure
