@@ -56,6 +56,13 @@ dependencies:
   # docs/architecture.md / the issue #4 PR.
   graphify: ^1.2.1
 
+  # Encrypted on-device storage for the Home Assistant server URL and long-lived
+  # access token (Keychain on iOS/macOS, Keystore-backed EncryptedSharedPreferences
+  # on Android, libsecret on Linux, and the Web Crypto API on web). Hidden behind
+  # the CredentialStore abstraction in lib/features/connection so the rest of the
+  # app never depends on the plugin directly and tests can mock it.
+  flutter_secure_storage: ^9.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
