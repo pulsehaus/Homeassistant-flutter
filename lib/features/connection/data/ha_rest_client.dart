@@ -58,6 +58,41 @@ class HaRestClient {
     return EntityState.fromJson(_decodeMap(response));
   }
 
+  /// `GET /api/history/period/<timestamp>?filter_entity_id=<entityId>` — the
+  /// recorded state history of a single entity between [start] and [end].
+  ///
+  /// Returns the raw decoded payload: HA answers with a JSON array whose single
+  /// element is the array of state objects for the requested entity (an empty
+  /// outer array when there is no history). Parsing that shape into a chart
+  /// series is left to the (widget-free) charts mapper so this client stays a
+  /// thin transport.
+  ///
+  /// [start] is encoded as an ISO-8601 timestamp in the URL path and [end] as
+  /// the `end_time` query parameter. `minimal_response` is requested so HA omits
+  /// unchanged attributes, keeping the payload small.
+  ///
+  /// Reference:
+  /// https://developers.home-assistant.io/docs/api/rest/#get-apihistoryperiodtimestamp
+  Future<List<dynamic>> fetchHistory(
+    String entityId, {
+    required DateTime start,
+    DateTime? end,
+  }) async {
+    final query = <String, String>{
+      'filter_entity_id': entityId,
+      'minimal_response': '',
+      if (end != null) 'end_time': end.toUtc().toIso8601String(),
+    };
+    final path = '/history/period/${start.toUtc().toIso8601String()}';
+    final response = await _request(
+      () => _client.get(
+        _endpoint(path).replace(queryParameters: query),
+        headers: _headers,
+      ),
+    );
+    return _decodeList(response);
+  }
+
   /// `POST /api/services/<domain>/<service>` — call a service. Returns the
   /// states that changed as a result.
   Future<List<EntityState>> callService(
