@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../charts/presentation/chart_example_page.dart';
 import '../application/counter_controller.dart';
 
 /// Minimal home screen acting as the app shell placeholder until real
@@ -28,6 +29,16 @@ class HomePage extends ConsumerWidget {
             Text(
               'Riverpod example — counter: $count',
               style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 24),
+            FilledButton.tonalIcon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ChartExamplePage(),
+                ),
+              ),
+              icon: const Icon(Icons.insights),
+              label: const Text('Charts example'),
             ),
           ],
         ),
