@@ -10,19 +10,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:homeassistant_flutter/app/app.dart';
+import 'package:homeassistant_flutter/features/connection/application/connection_setup_providers.dart';
+import 'package:homeassistant_flutter/features/connection/domain/connection_credentials.dart';
 
 import 'features/charts/fake_webview.dart';
+import 'features/connection/fakes/fake_credential_store.dart';
 
 void main() {
   // The app shell eagerly builds every destination (incl. the charts screen,
   // which embeds a WebView via graphify), so stub the WebView platform.
   setUpAll(setUpFakeWebView);
 
+  // Seed stored credentials so the app skips the connection screen and lands on
+  // the shell — the smoke test is about the shell, not the first-run flow.
+  ProviderScope appWithStoredCredentials() => ProviderScope(
+    overrides: [
+      credentialStoreProvider.overrideWithValue(
+        FakeCredentialStore(
+          initial: const ConnectionCredentials(
+            serverUrl: 'https://ha.example.com',
+            accessToken: 'token',
+          ),
+        ),
+      ),
+    ],
+    child: const HomeAssistantApp(),
+  );
+
   testWidgets('Home shell renders and the Riverpod counter increments', (
     WidgetTester tester,
   ) async {
     // ProviderScope is required for Riverpod providers to resolve.
-    await tester.pumpWidget(const ProviderScope(child: HomeAssistantApp()));
+    await tester.pumpWidget(appWithStoredCredentials());
+    await tester.pumpAndSettle();
 
     // The app shell is shown with the Home destination selected, and the
     // counter starts at 0.
@@ -42,7 +62,8 @@ void main() {
   testWidgets('Switching to the Charts destination shows the charts screen', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: HomeAssistantApp()));
+    await tester.pumpWidget(appWithStoredCredentials());
+    await tester.pumpAndSettle();
 
     // Charts is the second navigation destination.
     await tester.tap(find.text('Charts').last);
