@@ -35,9 +35,15 @@ first-class web build.
 ```bash
 git clone https://github.com/pulsehaus/Homeassistant-flutter.git
 cd Homeassistant-flutter
-flutter pub get
-flutter run
+fvm install            # installs the Flutter version pinned in .fvmrc
+fvm flutter pub get
+fvm flutter run
 ```
+
+This project pins its Flutter SDK with [FVM](https://fvm.app) via `.fvmrc`
+(currently 3.41.6). Install FVM once (`dart pub global activate fvm`), then run
+every Flutter/Dart command through it (`fvm flutter ...` / `fvm dart ...`) so all
+contributors build against the same version.
 
 You will need a running Home Assistant instance and a long-lived access token
 (Profile → Security → Long-lived access tokens).
@@ -62,6 +68,13 @@ lib/
 
 Contributions are welcome. Please open an issue to discuss significant changes
 before submitting a pull request.
+
+Before you start, read [`AGENTS.md`](AGENTS.md) — the single source of truth for
+the project's development rules (FVM usage, SOLID/clean-architecture layering,
+testing, formatting, Conventional Commits referencing the issue, and the
+issue/label conventions). It applies to human contributors and AI coding
+assistants alike; per-tool files (`CLAUDE.md`, `GEMINI.md`, Copilot, Cursor)
+just point back to it.
 
 ## License
 
