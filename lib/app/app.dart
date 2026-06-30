@@ -8,6 +8,7 @@ import '../features/connection/application/connection_session_controller.dart';
 import '../features/connection/domain/connection_credentials.dart';
 import '../features/connection/domain/ha_connection_config.dart';
 import '../features/connection/domain/server_url.dart';
+import '../features/connection/presentation/connection_banner.dart';
 import '../features/connection/presentation/connection_page.dart';
 import '../features/dashboard/presentation/dashboard_page.dart';
 import '../features/entities/presentation/entities_overview_page.dart';
@@ -72,6 +73,8 @@ class _ConnectedApp extends StatelessWidget {
         ),
       ],
       child: AppShell(
+        // App-wide connection-lost notice, visible across every destination.
+        banner: const ConnectionBanner(),
         destinations: const [
           ShellDestination(
             label: 'Home',
