@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../connection/application/connection_providers.dart';
+import '../../connection/domain/connection_status.dart';
+import '../../connection/domain/ha_exception.dart';
 import '../data/lovelace_repository.dart';
 import '../domain/lovelace_config.dart';
 
@@ -12,14 +14,30 @@ import '../domain/lovelace_config.dart';
 /// Not consumed by widgets directly (see [dashboardConfigProvider]); exposed so
 /// Retry can `ref.invalidate(dashboardConfigStreamProvider)` to re-fetch.
 ///
-/// NOTE (follow-up): `lovelace/config` needs a live socket. On a cold start the
-/// fetch can race the WebSocket handshake and surface the shared error surface
-/// until the user taps Retry. Gating the fetch on the `connected` state is the
-/// clean fix but needs the shell smoke test to stop using `pumpAndSettle` for a
-/// live-connecting app; tracked as a follow-up rather than reworked here.
-final dashboardConfigStreamProvider = StreamProvider<LovelaceConfig>((ref) {
+/// `lovelace/config` needs a live socket, so on a cold start the fetch races the
+/// WebSocket handshake. To avoid surfacing a spurious "disconnected" error (and
+/// a manual Retry), the stream **gates on the connection becoming `connected`**:
+/// while the socket is still connecting it stays loading (yields nothing), then
+/// fetches automatically once connected. A fatal connection error (e.g. an
+/// invalid token → [HaConnectionStatus.error]) is rethrown so the page surfaces
+/// it instead of spinning forever.
+final dashboardConfigStreamProvider = StreamProvider<LovelaceConfig>((
+  ref,
+) async* {
   final client = ref.watch(haWebSocketClientProvider);
-  return Stream.fromFuture(LovelaceRepository(client).fetchConfig());
+
+  // Wait for the socket to be ready before fetching. If it isn't connected yet,
+  // watch the lifecycle until it connects (proceed) or fails fatally (throw).
+  if (!client.connectionState.isConnected) {
+    await for (final state in client.connectionStates) {
+      if (state.isConnected) break;
+      if (state.status == HaConnectionStatus.error) {
+        throw state.error ?? const HaConnectionException('Connection failed');
+      }
+    }
+  }
+
+  yield await LovelaceRepository(client).fetchConfig();
 }, dependencies: [haWebSocketClientProvider]);
 
 /// The default dashboard config as an [AsyncValue], the way the page consumes it.
