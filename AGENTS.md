@@ -58,6 +58,18 @@ expectations every change must respect.
 - **Naming.** `snake_case.dart` files, suffixed by role where it helps clarity
   (`*_controller.dart`, `*_repository.dart`, `*_page.dart`). Read theming from
   `Theme.of(context)` rather than hard-coding colours/styles.
+- **Riverpod scoped overrides — declare `dependencies`.** The app overrides
+  `haConnectionConfigProvider` in a **nested `ProviderScope`** (`_ConnectedApp`
+  in `lib/app/app.dart`, holding the connected instance's URL + token). In
+  Riverpod 2.x, every provider that *transitively* reads the connection
+  providers (`haWebSocketClientProvider`, `haRestClientProvider`,
+  `entityStatesProvider`, `connectionStateProvider`, `entityProvider`, …) **must
+  declare its scoped `dependencies`** — e.g.
+  `Provider(..., dependencies: [haWebSocketClientProvider])`. Omitting it passes
+  the headless tests but **crashes at real runtime** with a scoped-dependency
+  assertion. Rule of thumb: when you add a *provider* that reads any
+  connection-derived provider, list the direct one in `dependencies`. (Widgets
+  reading providers are always fine — only new providers need this.)
 
 ## Testing — unit *and* integration
 
