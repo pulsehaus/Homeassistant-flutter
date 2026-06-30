@@ -28,14 +28,14 @@ final haWebSocketClientProvider = Provider<HaWebSocketClient>((ref) {
   ref.onDispose(client.dispose);
   client.connect();
   return client;
-});
+}, dependencies: [haConnectionConfigProvider]);
 
 /// The REST client, sharing the same configuration.
 final haRestClientProvider = Provider<HaRestClient>((ref) {
   final client = HaRestClient(config: ref.watch(haConnectionConfigProvider));
   ref.onDispose(client.close);
   return client;
-});
+}, dependencies: [haConnectionConfigProvider]);
 
 /// Live connection lifecycle (connecting / connected / reconnecting / error),
 /// seeded with the current value so late subscribers get it immediately.
@@ -43,7 +43,7 @@ final connectionStateProvider = StreamProvider<HaConnectionState>((ref) async* {
   final client = ref.watch(haWebSocketClientProvider);
   yield client.connectionState;
   yield* client.connectionStates;
-});
+}, dependencies: [haWebSocketClientProvider]);
 
 /// Live store of all entity states, keyed by entity id.
 final entityStatesProvider = StreamProvider<Map<String, EntityState>>((
@@ -52,11 +52,11 @@ final entityStatesProvider = StreamProvider<Map<String, EntityState>>((
   final client = ref.watch(haWebSocketClientProvider);
   yield client.entities;
   yield* client.entityStates;
-});
+}, dependencies: [haWebSocketClientProvider]);
 
 /// A single entity's current state, or null if unknown. Rebuilds only when that
 /// entity changes (see [EntityState] equality).
 final entityProvider = Provider.family<EntityState?, String>((ref, entityId) {
   final states = ref.watch(entityStatesProvider).value ?? const {};
   return states[entityId];
-});
+}, dependencies: [entityStatesProvider]);
