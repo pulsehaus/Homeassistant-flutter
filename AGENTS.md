@@ -83,19 +83,33 @@ the test needs to run:
   server (a pure-Dart test with no widget binding). These run with
   `fvm flutter test` and in CI. Name the concrete flow under test.
 - **Device-driven integration tests** (`integration_test/`) for flows that drive
-  the running app/UI — they need a connected device or emulator (or
-  `flutter drive`) and are **not** run by plain `fvm flutter test` or CI yet
-  (see the CI-wiring follow-up issue). Name the concrete flow under test.
+  the running app/UI — they need a connected device or emulator. They are **not**
+  run by plain `fvm flutter test` (which only covers `test/`); CI now runs them on
+  an Android emulator in a dedicated job (see *How `integration_test/` runs in CI*
+  below). Run them locally against a connected device/emulator with
+  `fvm flutter test integration_test`. Name the concrete flow under test.
 - For a **bug fix**, include a **regression test** that fails before the fix and
   passes after.
 
-Why the split: Flutter's `integration_test/` directory requires a connected
-device, so a headless network/integration test placed there can't run in CI —
-put those under `test/` instead.
+Why the split: Flutter's `integration_test/` directory drives a real device, so
+its CI job (the emulator below) is slower and heavier — keep pure-Dart headless
+network/integration tests under `test/` so they stay in the fast job.
 
 Definition of done for any code change: `fvm dart format .`, `fvm flutter analyze`
-and `fvm flutter test` (the headless suite) all pass. Device-driven
-`integration_test/` suites are run separately when a device is available.
+and `fvm flutter test` (the headless suite) all pass. The device-driven
+`integration_test/` suites run in CI on an Android emulator (the
+`integration-test-android` job); run them locally with
+`fvm flutter test integration_test` against a connected device/emulator.
+
+**How `integration_test/` runs in CI.** A dedicated `integration-test-android`
+job in [`ci.yml`](.github/workflows/ci.yml) boots a headless Android emulator on
+`ubuntu-latest` (via `reactivecircus/android-emulator-runner`, with KVM enabled
+and an AVD snapshot cache) and runs `flutter test integration_test` against it,
+so the suites exercise the real Android build/install path. It is a **separate**
+job from the fast headless `analyze-and-test` gate (which stays format + analyze
++ `fvm flutter test`), and the Flutter version still comes from `.fvmrc`. The
+modern `flutter test integration_test` command needs **no `test_driver/` folder**
+— don't add one (`flutter drive` is the legacy path, only needed for web).
 
 ## Formatting & lint
 

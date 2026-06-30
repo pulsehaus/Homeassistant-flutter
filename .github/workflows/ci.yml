@@ -62,3 +62,124 @@ jobs:
 
       - name: Run tests
         run: flutter test
+
+  # Job séparé, volontairement distinct du job rapide « Analyze & Test » : il fait
+  # tourner les suites device-driven de `integration_test/` sur un vrai émulateur
+  # Android. Le job headless reste donc rapide et n'est jamais bloqué par celui-ci.
+  integration-test-android:
+    name: Integration tests (Android emulator)
+    runs-on: ubuntu-latest
+    # L'émulateur peut être lent à démarrer ; on laisse une marge confortable.
+    timeout-minutes: 45
+    strategy:
+      matrix:
+        # API 34 = image x86_64 / google_apis bien rodée en CI. L'app cible
+        # minSdk 24 / compileSdk 35, donc tourner sur l'API 34 est valide
+        # (l'API 35 marche aussi — bumper la clé de cache AVD si on change).
+        api-level: [34]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # Les images système de l'émulateur sont volumineuses : on libère de la
+      # place sur le runner pour éviter les échecs « no space left on device ».
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android/sdk/ndk || true
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost || true
+
+      # Même source unique de vérité que le job headless : la version Flutter est
+      # lue depuis .fvmrc et passée à l'action Flutter (pas de FVM sur le runner).
+      - name: Read Flutter version from .fvmrc
+        id: fvm
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm.outputs.version }}
+          cache: true
+
+      # Même garde-fou anti-drift que le job headless.
+      - name: Verify Flutter version matches .fvmrc
+        run: |
+          expected="${{ steps.fvm.outputs.version }}"
+          actual="$(flutter --version --machine | jq -r .frameworkVersion)"
+          echo "Expected (.fvmrc): $expected"
+          echo "Actual (flutter --version): $actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::Flutter version mismatch — expected $expected (from .fvmrc) but found $actual installed."
+            exit 1
+          fi
+          echo "Flutter version matches .fvmrc ($expected)."
+
+      # Le module Android cible Java 17 ; il faut le JDK 17 pour le build debug
+      # installé sur l'émulateur.
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Indispensable : on accorde les permissions sur /dev/kvm. Le matériel KVM
+      # est présent sur ubuntu-latest, mais l'action ne configure pas les droits
+      # du device — sans cette règle udev, l'émulateur retombe en émulation
+      # logicielle (très lent) ou échoue à démarrer.
+      - name: Enable KVM group perms
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Cache du snapshot AVD : la clé inclut api-level + arch + target. Bumper le
+      # suffixe -v1 si l'un de ces paramètres change, sinon le snapshot caché ne
+      # sera pas restauré et l'émulateur fera un cold-boot à chaque run.
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}-x86_64-google_apis-v1
+
+      # Premier passage (seulement si le cache est vide) : on crée l'AVD et on
+      # génère le snapshot. Pas de -no-snapshot-save ici (on veut l'écrire) et
+      # disable-animations:false, comme dans l'exemple de l'action.
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          target: google_apis
+          cores: 4
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+
+      # Run réel : config AVD identique au passage de génération (obligatoire pour
+      # restaurer le snapshot). -no-snapshot-save garde le snapshot caché immuable.
+      # Le test DOIT s'exécuter dans `script:` (l'émulateur n'est vivant que là).
+      # On épingle le device (-d emulator-5554) pour ne jamais risquer de tomber
+      # sur le host : `flutter test integration_test` compile un build debug,
+      # l'installe sur l'émulateur et lance les suites integration_test/ — sans
+      # dossier test_driver/ (la commande moderne n'en a pas besoin).
+      - name: Run integration_test suites on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          target: google_apis
+          cores: 4
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb wait-for-device
+            flutter devices
+            flutter test integration_test -d emulator-5554
