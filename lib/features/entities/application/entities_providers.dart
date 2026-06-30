@@ -13,4 +13,4 @@ import '../domain/entity_group.dart';
 final entityGroupsProvider = Provider<AsyncValue<List<EntityGroup>>>((ref) {
   final states = ref.watch(entityStatesProvider);
   return states.whenData(groupEntitiesByDomain);
-});
+}, dependencies: [entityStatesProvider]);

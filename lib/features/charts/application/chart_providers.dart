@@ -12,7 +12,7 @@ final entityHistoryRepositoryProvider = Provider<EntityHistoryRepository>((
   ref,
 ) {
   return EntityHistoryRepository(ref.watch(haRestClientProvider));
-});
+}, dependencies: [haRestClientProvider]);
 
 /// Identifies a single history request: which entity, over what trailing
 /// window. Used as the family key so Riverpod caches/refetches per (entity,
@@ -53,7 +53,7 @@ final entityHistorySeriesProvider =
     ) async {
       final repository = ref.watch(entityHistoryRepositoryProvider);
       return repository.fetchSeries(request.entityId, period: request.period);
-    });
+    }, dependencies: [entityHistoryRepositoryProvider]);
 
 /// A sensible default entity to chart: the first numeric `sensor.*` currently
 /// known to the live entity store, or null if none is available yet.
@@ -73,7 +73,7 @@ final defaultChartEntityProvider = Provider<String?>((ref) {
           .toList()
         ..sort();
   return numericSensors.isEmpty ? null : numericSensors.first;
-});
+}, dependencies: [entityStatesProvider]);
 
 bool _isNumeric(String state) => double.tryParse(state) != null;
 

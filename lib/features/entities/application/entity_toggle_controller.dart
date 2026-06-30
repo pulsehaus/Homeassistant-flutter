@@ -95,4 +95,4 @@ class EntityToggleController {
 /// client. Overridable in tests with a fake client.
 final entityToggleControllerProvider = Provider<EntityToggleController>((ref) {
   return EntityToggleController(ref.watch(haWebSocketClientProvider));
-});
+}, dependencies: [haWebSocketClientProvider]);

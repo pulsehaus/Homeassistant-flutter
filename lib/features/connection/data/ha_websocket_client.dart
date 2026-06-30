@@ -128,6 +128,28 @@ class HaWebSocketClient {
     });
   }
 
+  /// Fetch a Lovelace dashboard config over the WebSocket API. A null [urlPath]
+  /// requests the default dashboard. Only available for storage-mode (UI-edited)
+  /// dashboards; YAML/auto-generated setups may error or return a strategy shape.
+  ///
+  /// Completes with the raw config map, or throws [HaCommandException] /
+  /// [HaConnectionException]. Unlike [callService], `url_path` is always sent
+  /// (with an explicit null for the default dashboard) rather than spread away,
+  /// because HA expects the key to be present.
+  Future<Map<String, dynamic>> fetchLovelaceConfig({String? urlPath}) {
+    if (_disposed || !_state.isConnected) {
+      return Future.error(
+        const HaConnectionException(
+          'Cannot fetch the dashboard while disconnected',
+        ),
+      );
+    }
+    return _sendCommand(_nextId(), {
+      'type': 'lovelace/config',
+      'url_path': urlPath,
+    }).then((result) => (result as Map).cast<String, dynamic>());
+  }
+
   /// Permanently release all resources. The client cannot be reused afterwards.
   Future<void> dispose() async {
     _disposed = true;
