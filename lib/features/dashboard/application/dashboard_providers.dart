@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../connection/application/connection_providers.dart';
@@ -13,6 +11,12 @@ import '../domain/lovelace_config.dart';
 /// the connection config, which the app overrides in a nested `ProviderScope`.
 /// Not consumed by widgets directly (see [dashboardConfigProvider]); exposed so
 /// Retry can `ref.invalidate(dashboardConfigStreamProvider)` to re-fetch.
+///
+/// NOTE (follow-up): `lovelace/config` needs a live socket. On a cold start the
+/// fetch can race the WebSocket handshake and surface the shared error surface
+/// until the user taps Retry. Gating the fetch on the `connected` state is the
+/// clean fix but needs the shell smoke test to stop using `pumpAndSettle` for a
+/// live-connecting app; tracked as a follow-up rather than reworked here.
 final dashboardConfigStreamProvider = StreamProvider<LovelaceConfig>((ref) {
   final client = ref.watch(haWebSocketClientProvider);
   return Stream.fromFuture(LovelaceRepository(client).fetchConfig());
