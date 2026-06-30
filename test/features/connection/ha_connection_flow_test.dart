@@ -9,7 +9,8 @@
 // pure-Dart network test with no widget binding, so it runs with `flutter test`
 // and in CI without a device. Flutter's integration_test/ directory is reserved
 // for device-driven flows (e.g. the #3/#4 widget integration tests), which need
-// a connected device/emulator and are not run by plain `flutter test`.
+// a connected device/emulator: they run in CI on the dedicated Android-emulator
+// job, not by plain `flutter test`.
 import 'dart:convert';
 import 'dart:io';
 
