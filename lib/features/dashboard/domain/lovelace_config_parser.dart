@@ -71,6 +71,17 @@ LovelaceCard cardFromJson(Map<String, dynamic> json) {
           title: json['title'] as String?,
           hoursToShow: (json['hours_to_show'] as num?)?.toInt() ?? 24,
         );
+      case 'gauge':
+        final id = json['entity'];
+        if (id is! String) return UnsupportedCard(type: type);
+        return GaugeCard(
+          entityId: id,
+          name: json['name'] as String?,
+          unit: json['unit'] as String?,
+          min: (json['min'] as num?)?.toDouble() ?? 0,
+          max: (json['max'] as num?)?.toDouble() ?? 100,
+          severity: _parseSeverity(json['severity']),
+        );
       case 'glance':
         final rows = _parseRows(json['entities']);
         if (rows.isEmpty) return UnsupportedCard(type: type);
@@ -123,4 +134,18 @@ List<String> _parseEntityIds(Object? raw) {
     for (final entry in raw)
       if (entry is String) entry,
   ];
+}
+
+/// Parses a `gauge` card's `severity` map (`{green, yellow, red}`), all
+/// optional numeric thresholds. Returns null when [raw] isn't a map or has
+/// none of the three keys, so a card with no `severity` config keeps
+/// `GaugeCard.severity == null` (no colouring) rather than an all-null
+/// placeholder.
+GaugeSeverity? _parseSeverity(Object? raw) {
+  if (raw is! Map) return null;
+  final green = (raw['green'] as num?)?.toDouble();
+  final yellow = (raw['yellow'] as num?)?.toDouble();
+  final red = (raw['red'] as num?)?.toDouble();
+  if (green == null && yellow == null && red == null) return null;
+  return GaugeSeverity(green: green, yellow: yellow, red: red);
 }

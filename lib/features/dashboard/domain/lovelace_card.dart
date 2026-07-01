@@ -132,6 +132,85 @@ class HistoryGraphCard extends LovelaceCard {
       'entities: $entities)';
 }
 
+/// The three numeric thresholds of a `gauge` card's `severity` map, on the
+/// entity's own scale (not normalised to 0..1).
+///
+/// HA colours the gauge by walking the thresholds top-down: at or above [red]
+/// is red, at or above [yellow] (and below [red]) is yellow, otherwise green.
+/// See `GaugeCardWidget` for the comparison logic.
+class GaugeSeverity {
+  const GaugeSeverity({this.green, this.yellow, this.red});
+
+  final double? green;
+  final double? yellow;
+  final double? red;
+
+  @override
+  bool operator ==(Object other) =>
+      other is GaugeSeverity &&
+      other.green == green &&
+      other.yellow == yellow &&
+      other.red == red;
+
+  @override
+  int get hashCode => Object.hash(green, yellow, red);
+
+  @override
+  String toString() =>
+      'GaugeSeverity(green: $green, yellow: $yellow, red: $red)';
+}
+
+/// A gauge card (`type: gauge`): a single numeric entity rendered as a
+/// min/max-clamped gauge, optionally coloured by [severity] thresholds.
+class GaugeCard extends LovelaceCard {
+  const GaugeCard({
+    required this.entityId,
+    this.name,
+    this.unit,
+    this.min = 0,
+    this.max = 100,
+    this.severity,
+  });
+
+  /// The entity this gauge displays, e.g. `sensor.living_room_humidity`.
+  final String entityId;
+
+  /// An explicit display name from the config, or null to fall back to the
+  /// entity's friendly name / id at render time.
+  final String? name;
+
+  /// An explicit unit override from the config, or null to fall back to the
+  /// entity's `unit_of_measurement` attribute.
+  final String? unit;
+
+  /// The gauge's lower bound. Defaults to 0, matching HA.
+  final double min;
+
+  /// The gauge's upper bound. Defaults to 100, matching HA.
+  final double max;
+
+  /// Optional colour thresholds; null when the config has no `severity` map.
+  final GaugeSeverity? severity;
+
+  @override
+  bool operator ==(Object other) =>
+      other is GaugeCard &&
+      other.entityId == entityId &&
+      other.name == name &&
+      other.unit == unit &&
+      other.min == min &&
+      other.max == max &&
+      other.severity == severity;
+
+  @override
+  int get hashCode => Object.hash(entityId, name, unit, min, max, severity);
+
+  @override
+  String toString() =>
+      'GaugeCard($entityId, name: $name, unit: $unit, min: $min, max: $max, '
+      'severity: $severity)';
+}
+
 /// A glance card (`type: glance`): an optional title and a compact grid of
 /// entity tiles (icon + name + state), each individually toggleable via the
 /// `show_*` options.
