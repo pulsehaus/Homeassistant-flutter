@@ -6,6 +6,7 @@ import '../../connection/presentation/connection_status_indicator.dart';
 import '../application/dashboard_providers.dart';
 import '../domain/lovelace_card.dart';
 import '../domain/lovelace_config.dart';
+import 'cards/button_card_widget.dart';
 import 'cards/entities_card_widget.dart';
 import 'cards/entity_card_widget.dart';
 import 'cards/history_graph_card_widget.dart';
@@ -48,6 +49,7 @@ class DashboardPage extends ConsumerWidget {
     final EntityCard c => EntityCardWidget(card: c),
     final EntitiesCard c => EntitiesCardWidget(card: c),
     final HistoryGraphCard c => HistoryGraphCardWidget(card: c),
+    final ButtonCard c => ButtonCardWidget(card: c),
     final UnsupportedCard c => UnsupportedCardWidget(card: c),
   };
 }

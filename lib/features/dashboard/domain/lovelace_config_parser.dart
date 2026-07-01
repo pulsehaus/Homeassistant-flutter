@@ -71,6 +71,18 @@ LovelaceCard cardFromJson(Map<String, dynamic> json) {
           title: json['title'] as String?,
           hoursToShow: (json['hours_to_show'] as num?)?.toInt() ?? 24,
         );
+      case 'button':
+        // Unlike `entity`, a missing/non-string `entity` is valid HA config
+        // (an entity-less button, e.g. pure navigation) — never
+        // UnsupportedCard for that reason alone.
+        final rawEntity = json['entity'];
+        return ButtonCard(
+          entityId: rawEntity is String ? rawEntity : null,
+          name: json['name'] as String?,
+          icon: json['icon'] as String?,
+          showName: json['show_name'] as bool? ?? true,
+          showState: json['show_state'] as bool? ?? false,
+        );
       default:
         return UnsupportedCard(type: type);
     }
