@@ -155,6 +155,46 @@ void main() {
       );
     });
 
+    test('button card parses entity, name, icon and show flags', () {
+      expect(
+        cardFromJson({
+          'type': 'button',
+          'entity': 'light.kitchen',
+          'name': 'Kitchen',
+          'icon': 'mdi:lightbulb',
+          'show_name': false,
+          'show_state': true,
+        }),
+        const ButtonCard(
+          entityId: 'light.kitchen',
+          name: 'Kitchen',
+          icon: 'mdi:lightbulb',
+          showName: false,
+          showState: true,
+        ),
+      );
+    });
+
+    test('button card defaults show_name to true and show_state to false', () {
+      expect(
+        cardFromJson({'type': 'button', 'entity': 'light.kitchen'}),
+        const ButtonCard(entityId: 'light.kitchen'),
+      );
+    });
+
+    test('button card with a missing/non-string entity is NOT UnsupportedCard '
+        '(HA allows entity-less buttons)', () {
+      expect(cardFromJson({'type': 'button'}), const ButtonCard());
+      expect(
+        cardFromJson({'type': 'button', 'entity': 42}),
+        const ButtonCard(),
+      );
+      expect(
+        cardFromJson({'type': 'button', 'name': 'Go somewhere'}),
+        const ButtonCard(name: 'Go somewhere'),
+      );
+    });
+
     test('gauge card parses entity, name, unit, min/max and severity', () {
       final card = cardFromJson({
         'type': 'gauge',

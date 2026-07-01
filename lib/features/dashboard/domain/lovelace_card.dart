@@ -132,6 +132,68 @@ class HistoryGraphCard extends LovelaceCard {
       'entities: $entities)';
 }
 
+/// A button card (`type: button`): a compact, tappable tile — typically used
+/// to toggle a light/switch, though HA also allows an entity-less button (e.g.
+/// pure navigation) since `tap_action` can be anything.
+///
+/// v1 scope (see the issue): only the default "toggle" `tap_action` behaviour
+/// is implemented — [ButtonCardWidget] toggles [entityId] when it resolves to
+/// a toggleable entity ([EntityToggle.isToggleable]) and is otherwise inert on
+/// tap. Other `tap_action` types (`navigate`, `more-info`, a custom
+/// `call-service`) are out of scope / follow-up, so the config's `tap_action`
+/// field itself isn't modelled here yet.
+class ButtonCard extends LovelaceCard {
+  const ButtonCard({
+    this.entityId,
+    this.name,
+    this.icon,
+    this.showName = true,
+    this.showState = false,
+  });
+
+  /// The entity this button acts on, e.g. `light.kitchen`. Nullable — unlike
+  /// [EntityCard], HA allows a button with no entity at all (e.g. one whose
+  /// `tap_action` only navigates), so a missing `entity` is valid config, not
+  /// a malformed one.
+  final String? entityId;
+
+  /// An explicit display name from the config, or null to fall back to the
+  /// entity's friendly name / id at render time.
+  final String? name;
+
+  /// An HA icon name from the config, e.g. `mdi:lightbulb`. This app has no
+  /// MDI-to-[IconData] mapping, so [ButtonCardWidget] can't render arbitrary
+  /// icon names yet; it falls back to a domain-based default icon instead of
+  /// silently dropping the field.
+  final String? icon;
+
+  /// Whether to show the resolved name label. Defaults to `true`, matching
+  /// HA's `show_name`.
+  final bool showName;
+
+  /// Whether to show the entity's state text. Defaults to `false` — HA's
+  /// actual default for the button card (unlike the `entity` card, which
+  /// always shows state).
+  final bool showState;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ButtonCard &&
+      other.entityId == entityId &&
+      other.name == name &&
+      other.icon == icon &&
+      other.showName == showName &&
+      other.showState == showState;
+
+  @override
+  int get hashCode => Object.hash(entityId, name, icon, showName, showState);
+
+  @override
+  String toString() =>
+      'ButtonCard($entityId, name: $name, icon: $icon, '
+      'showName: $showName, showState: $showState)';
+}
+
 /// The three numeric thresholds of a `gauge` card's `severity` map, on the
 /// entity's own scale (not normalised to 0..1).
 ///
