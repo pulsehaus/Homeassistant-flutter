@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme/app_theme.dart';
+import '../core/theme/theme_mode_providers.dart';
 import '../features/charts/presentation/entity_history_page.dart';
 import '../features/connection/application/connection_providers.dart';
 import '../features/connection/application/connection_session_controller.dart';
@@ -29,12 +30,18 @@ class HomeAssistantApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(connectionSessionProvider);
+    // Defaults to ThemeMode.system while the stored preference is still
+    // loading (or if nothing has been chosen yet), matching the previous
+    // implicit behaviour before a manual toggle existed.
+    final themeMode =
+        ref.watch(themeModeControllerProvider).value ?? ThemeMode.system;
 
     return MaterialApp(
       title: 'Home Assistant',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
+      themeMode: themeMode,
       home: session.when(
         loading: () => const _SplashScreen(),
         // A failure to read secure storage shouldn't strand the user — fall back

@@ -63,6 +63,13 @@ dependencies:
   # app never depends on the plugin directly and tests can mock it.
   flutter_secure_storage: ^9.2.2
 
+  # Plain on-device key-value storage for non-sensitive local preferences (e.g.
+  # the user's chosen theme mode). Hidden behind the ThemeModeStore abstraction
+  # in lib/core/theme so the rest of the app never depends on the plugin
+  # directly and tests can mock it. Unlike flutter_secure_storage, this is not
+  # encrypted — only use it for settings that aren't sensitive.
+  shared_preferences: ^2.5.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
