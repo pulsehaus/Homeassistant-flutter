@@ -43,6 +43,10 @@ enum HistoryRange {
 /// [AppPage.async] so loading, error and empty states all use the shared
 /// template surfaces (#3). The chart itself is the unchanged
 /// [TimeSeriesChart] wrapper — only the data source is new.
+/// The content is also wrapped in a [RefreshIndicator] (#32): pulling down
+/// re-fetches the same [entityHistorySeriesProvider] family member the manual
+/// refresh [IconButton] already invalidates, via `ref.refresh(...future)` so
+/// `onRefresh` completes once the new data (or error) has landed.
 class EntityHistoryPage extends ConsumerStatefulWidget {
   const EntityHistoryPage({
     super.key,
@@ -134,21 +138,32 @@ class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
         ),
       ],
       builder: (context, data) {
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ?picker,
-              Text(
-                'Live history for $entityId (last ${period.inHours}h).',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: TimeSeriesChart(series: [data], title: data.name),
-              ),
-            ],
+        return RefreshIndicator(
+          onRefresh: () =>
+              ref.refresh(entityHistorySeriesProvider(request).future),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: CustomScrollView(
+              // Pull-to-refresh needs a scrollable to drive the gesture even
+              // when the content itself fits on screen without scrolling.
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverList(
+                  delegate: SliverChildListDelegate([
+                    ?picker,
+                    Text(
+                      'Live history for $entityId (last ${period.inHours}h).',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+                  ]),
+                ),
+                SliverFillRemaining(
+                  hasScrollBody: true,
+                  child: TimeSeriesChart(series: [data], title: data.name),
+                ),
+              ],
+            ),
           ),
         );
       },
