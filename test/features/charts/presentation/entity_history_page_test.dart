@@ -225,4 +225,33 @@ void main() {
 
     expect(find.byType(DropdownButton<String>), findsNothing);
   });
+
+  testWidgets('pulling to refresh re-fetches the history data', (tester) async {
+    var fetchCount = 0;
+    await tester.pumpWidget(
+      _harness([
+        defaultChartEntityProvider.overrideWithValue('sensor.temp'),
+        entityHistorySeriesProvider.overrideWith((ref, request) async {
+          fetchCount++;
+          return _series();
+        }),
+      ]),
+    );
+    await tester.pumpAndSettle();
+    expect(fetchCount, 1);
+    expect(find.byType(RefreshIndicator), findsOneWidget);
+
+    // Drag down from the top of the RefreshIndicator to trigger a
+    // pull-to-refresh, then let the indicator's animation settle.
+    await tester.fling(
+      find.byType(RefreshIndicator),
+      const Offset(0, 300),
+      1000,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(fetchCount, 2);
+  });
 }
