@@ -63,6 +63,14 @@ LovelaceCard cardFromJson(Map<String, dynamic> json) {
           title: json['title'] as String?,
           rows: _parseRows(json['entities']),
         );
+      case 'history-graph':
+        final entities = _parseEntityIds(json['entities']);
+        if (entities.isEmpty) return UnsupportedCard(type: type);
+        return HistoryGraphCard(
+          entities: entities,
+          title: json['title'] as String?,
+          hoursToShow: (json['hours_to_show'] as num?)?.toInt() ?? 24,
+        );
       default:
         return UnsupportedCard(type: type);
     }
@@ -91,4 +99,16 @@ List<EntitiesRow> _parseRows(Object? raw) {
     }
   }
   return rows;
+}
+
+/// Parses a `history-graph` card's `entities` field — HA documents this as a
+/// plain list of entity-id strings (no string-or-object dual shape like the
+/// `entities` card). Non-string entries are skipped rather than failing the
+/// whole card.
+List<String> _parseEntityIds(Object? raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final entry in raw)
+      if (entry is String) entry,
+  ];
 }

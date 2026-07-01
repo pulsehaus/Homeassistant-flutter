@@ -8,6 +8,7 @@ import '../domain/lovelace_card.dart';
 import '../domain/lovelace_config.dart';
 import 'cards/entities_card_widget.dart';
 import 'cards/entity_card_widget.dart';
+import 'cards/history_graph_card_widget.dart';
 import 'cards/unsupported_card_widget.dart';
 
 /// Renders the default Lovelace dashboard fetched from Home Assistant.
@@ -46,6 +47,7 @@ class DashboardPage extends ConsumerWidget {
   Widget _cardWidget(LovelaceCard card) => switch (card) {
     final EntityCard c => EntityCardWidget(card: c),
     final EntitiesCard c => EntitiesCardWidget(card: c),
+    final HistoryGraphCard c => HistoryGraphCardWidget(card: c),
     final UnsupportedCard c => UnsupportedCardWidget(card: c),
   };
 }
