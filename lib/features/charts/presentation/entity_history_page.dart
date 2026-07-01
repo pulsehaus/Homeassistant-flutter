@@ -112,9 +112,8 @@ class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
       title: 'History',
       value: series,
       isEmpty: (data) => data.points.isEmpty,
-      emptyMessage:
-          'No recorded history for this entity in the last '
-          '${period.inHours}h.',
+      emptyBuilder: (context) =>
+          _NoHistoryEmptyState(entityId: entityId, period: period),
       onRetry: () => ref.invalidate(entityHistorySeriesProvider(request)),
       connectionIndicator: const ConnectionStatusIndicator(),
       actions: [
@@ -153,6 +152,54 @@ class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Empty surface shown when the selected entity has no recorded history for
+/// the current [period] (#34). Mirrors the shared `_EmptyState` in
+/// [AppPage] (themed icon + message, centred) but swaps the generic inbox
+/// icon for a history/chart-related one and spells out *why* nothing is
+/// showing, since a blank chart otherwise reads as broken rather than empty.
+class _NoHistoryEmptyState extends StatelessWidget {
+  const _NoHistoryEmptyState({required this.entityId, required this.period});
+
+  final String entityId;
+  final Duration period;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.show_chart,
+              size: 48,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No history for this entity yet',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '$entityId has no recorded state changes in the last '
+              '${period.inHours}h. Once Home Assistant records some, '
+              'they will show up here as a chart.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
