@@ -55,25 +55,41 @@ final entityHistorySeriesProvider =
       return repository.fetchSeries(request.entityId, period: request.period);
     }, dependencies: [entityHistoryRepositoryProvider]);
 
+/// All numeric `sensor.*` entity ids currently known to the live entity
+/// store, sorted for a stable picker order.
+///
+/// "Numeric" means the current state parses as a number — i.e. it makes sense
+/// on a value axis. Backs both [defaultChartEntityProvider] (pick the first)
+/// and the entity picker on [entity_history_page] (list them all).
+final numericSensorEntitiesProvider = Provider<List<String>>((ref) {
+  // `valueOrNull` (not `.value`) so a loading/error connection state yields
+  // "no entities yet" instead of rethrowing — the screen then shows its empty
+  // surface rather than crashing.
+  final states = ref.watch(entityStatesProvider).valueOrNull ?? const {};
+  return states.values
+      .where((e) => e.domain == 'sensor' && _isNumeric(e.state))
+      .map((e) => e.entityId)
+      .toList()
+    ..sort();
+}, dependencies: [entityStatesProvider]);
+
 /// A sensible default entity to chart: the first numeric `sensor.*` currently
 /// known to the live entity store, or null if none is available yet.
 ///
-/// "Numeric" means the current state parses as a number — i.e. it makes sense on
-/// a value axis. This keeps the screen useful without an explicit picker; a
-/// richer picker can replace it later.
+/// This keeps the screen useful without an explicit selection; the picker on
+/// [entity_history_page] lets the user override it.
 final defaultChartEntityProvider = Provider<String?>((ref) {
-  // `valueOrNull` (not `.value`) so a loading/error connection state yields
-  // "no entity yet" instead of rethrowing — the screen then shows its empty
-  // surface rather than crashing.
-  final states = ref.watch(entityStatesProvider).valueOrNull ?? const {};
-  final numericSensors =
-      states.values
-          .where((e) => e.domain == 'sensor' && _isNumeric(e.state))
-          .map((e) => e.entityId)
-          .toList()
-        ..sort();
+  final numericSensors = ref.watch(numericSensorEntitiesProvider);
   return numericSensors.isEmpty ? null : numericSensors.first;
-}, dependencies: [entityStatesProvider]);
+}, dependencies: [numericSensorEntitiesProvider]);
+
+/// The entity explicitly chosen by the user via the picker on
+/// [entity_history_page], or null when nothing has been picked yet (in which
+/// case the screen falls back to [defaultChartEntityProvider]).
+///
+/// Deliberately a plain [StateProvider]: it holds ephemeral UI selection, not
+/// domain state, so it has no `dependencies` on the connection providers.
+final selectedChartEntityProvider = StateProvider<String?>((ref) => null);
 
 bool _isNumeric(String state) => double.tryParse(state) != null;
 
