@@ -29,13 +29,13 @@ class EntityHistoryPage extends ConsumerWidget {
     // No numeric sensor is known yet (entities still streaming in, or the
     // instance has none) — show the shared empty surface rather than an error.
     if (entityId == null) {
-      return AppPage(
+      return const AppPage(
         title: 'History',
-        state: const PageState.empty(),
+        state: PageState.empty(),
         emptyMessage:
             'No numeric sensor found yet.\nConnect an instance with a '
             'sensor.* entity to chart its history.',
-        body: const SizedBox.shrink(),
+        body: SizedBox.shrink(),
       );
     }
 

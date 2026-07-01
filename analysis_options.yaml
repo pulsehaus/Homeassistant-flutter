@@ -20,9 +20,57 @@ linter:
   # or a specific dart file by using the `// ignore: name_of_lint` and
   # `// ignore_for_file: name_of_lint` syntax on the line or in the file
   # producing the lint.
+  #
+  # Curated baseline on top of flutter_lints (#31). Each rule below is chosen
+  # to catch real correctness/consistency issues without fighting the existing
+  # style (relative imports within lib/, feature-first layering) or requiring
+  # sweeping, behavior-risking rewrites:
+  #   - unawaited_futures: catches fire-and-forget futures (e.g. an un-awaited
+  #     WebSocket send/reconnect) that silently swallow errors — a real bug
+  #     class for a connection-driven app.
+  #   - avoid_print: production code should go through proper logging, not
+  #     stray `print`; keeps debug scaffolding out of committed code.
+  #   - require_trailing_commas: keeps multi-line argument/collection literals
+  #     diffing cleanly and matches what `dart format` already prefers.
+  #   - prefer_const_constructors / prefer_const_constructors_in_immutables /
+  #     prefer_const_literals_to_create_immutables / prefer_const_declarations:
+  #     cheap perf win (fewer widget rebuild allocations) that flutter_lints
+  #     doesn't already fully cover, with no API/behavior change.
+  #   - prefer_final_locals / prefer_final_in_for_each: encourages immutability
+  #     by default, matching the SOLID/clean-architecture intent in AGENTS.md.
+  #   - directives_ordering: keeps import blocks (dart:, package:, relative)
+  #     consistently sorted — cosmetic, but low-noise and dart-fix-able.
+  #   - always_declare_return_types / type_annotate_public_apis: keeps
+  #     feature-boundary APIs (repositories, controllers) explicit about their
+  #     contracts, which matters for the inward-pointing layering this repo
+  #     relies on.
+  #   - cancel_subscriptions / close_sinks: this app owns WebSocket streams and
+  #     StreamControllers (entity state updates); leaking them is a real
+  #     resource bug, not a style nit.
+  #   - use_key_in_widget_constructors: standard Flutter widget hygiene.
+  #
+  # Deliberately NOT enabled: `always_use_package_imports` / `avoid_relative_
+  # lib_imports` (the codebase already standardizes on relative imports within
+  # lib/, see AGENTS.md — flipping that would be a huge, unrelated diff for no
+  # behavior gain) and other highly pedantic style rules (e.g. sort_constructors_
+  # first, lines_longer_than_80_chars) that would fight the existing style
+  # without catching real bugs.
   rules:
-    # avoid_print: false  # Uncomment to disable the `avoid_print` rule
-    # prefer_single_quotes: true  # Uncomment to enable the `prefer_single_quotes` rule
+    - unawaited_futures
+    - avoid_print
+    - require_trailing_commas
+    - prefer_const_constructors
+    - prefer_const_constructors_in_immutables
+    - prefer_const_literals_to_create_immutables
+    - prefer_const_declarations
+    - prefer_final_locals
+    - prefer_final_in_for_each
+    - directives_ordering
+    - always_declare_return_types
+    - type_annotate_public_apis
+    - cancel_subscriptions
+    - close_sinks
+    - use_key_in_widget_constructors
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options

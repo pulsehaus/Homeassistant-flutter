@@ -46,6 +46,12 @@ class HaWebSocketClient {
   Map<String, EntityState> _entities = {};
 
   HaSocket? _socket;
+  // The `cancel_subscriptions` lint only recognizes a direct
+  // `_socketSub.cancel()` in the same method; it can't follow the local-alias
+  // pattern in `_teardownSocket` below (deliberately: the field must be nulled
+  // *before* the `await sub?.cancel()` so a command racing teardown sees no
+  // socket rather than blocking on it). It is cancelled on every teardown path.
+  // ignore: cancel_subscriptions
   StreamSubscription<Map<String, dynamic>>? _socketSub;
 
   /// Monotonically increasing command id, reset on every (re)connection as HA

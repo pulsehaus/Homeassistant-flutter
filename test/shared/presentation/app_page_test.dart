@@ -115,7 +115,7 @@ void main() {
         host(
           AppPage.async<int>(
             title: 'Async',
-            value: AsyncValue.error('kaboom', StackTrace.empty),
+            value: const AsyncValue.error('kaboom', StackTrace.empty),
             builder: (_, data) => Text('data: $data'),
           ),
         ),
