@@ -9,6 +9,7 @@ import '../domain/lovelace_config.dart';
 import 'cards/entities_card_widget.dart';
 import 'cards/entity_card_widget.dart';
 import 'cards/gauge_card_widget.dart';
+import 'cards/glance_card_widget.dart';
 import 'cards/history_graph_card_widget.dart';
 import 'cards/unsupported_card_widget.dart';
 
@@ -50,6 +51,7 @@ class DashboardPage extends ConsumerWidget {
     final EntitiesCard c => EntitiesCardWidget(card: c),
     final HistoryGraphCard c => HistoryGraphCardWidget(card: c),
     final GaugeCard c => GaugeCardWidget(card: c),
+    final GlanceCard c => GlanceCardWidget(card: c),
     final UnsupportedCard c => UnsupportedCardWidget(card: c),
   };
 }
