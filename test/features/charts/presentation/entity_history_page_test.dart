@@ -77,22 +77,28 @@ void main() {
     expect(find.text('Retry'), findsOneWidget);
   });
 
-  testWidgets('shows the empty surface when the entity has no history', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      _harness([
-        defaultChartEntityProvider.overrideWithValue('sensor.temp'),
-        entityHistorySeriesProvider.overrideWith(
-          (ref, request) async =>
-              const ChartSeries(name: 'sensor.temp', points: []),
-        ),
-      ]),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'shows a history-specific empty surface when the entity has no history',
+    (tester) async {
+      await tester.pumpWidget(
+        _harness([
+          defaultChartEntityProvider.overrideWithValue('sensor.temp'),
+          entityHistorySeriesProvider.overrideWith(
+            (ref, request) async =>
+                const ChartSeries(name: 'sensor.temp', points: []),
+          ),
+        ]),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.textContaining('No recorded history'), findsOneWidget);
-  });
+      expect(find.text('No history for this entity yet'), findsOneWidget);
+      expect(find.textContaining('sensor.temp'), findsWidgets);
+      expect(find.textContaining('last 24h'), findsOneWidget);
+      expect(find.byIcon(Icons.show_chart), findsOneWidget);
+      // Not the shared template's generic default icon.
+      expect(find.byIcon(Icons.inbox_outlined), findsNothing);
+    },
+  );
 
   testWidgets('renders the chart content when history is available', (
     tester,
