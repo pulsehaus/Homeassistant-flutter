@@ -111,4 +111,76 @@ void main() {
     expect(find.textContaining('Live history for sensor.temp'), findsOneWidget);
     expect(find.byKey(const ValueKey('fake-webview')), findsOneWidget);
   });
+
+  testWidgets('the picker lists every known numeric sensor', (tester) async {
+    await tester.pumpWidget(
+      _harness([
+        numericSensorEntitiesProvider.overrideWithValue([
+          'sensor.a',
+          'sensor.b',
+        ]),
+        defaultChartEntityProvider.overrideWithValue('sensor.a'),
+        entityHistorySeriesProvider.overrideWith(
+          (ref, request) async => _series(),
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DropdownButton<String>), findsOneWidget);
+
+    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.pumpAndSettle();
+
+    expect(find.text('sensor.a').hitTestable(), findsOneWidget);
+    expect(find.text('sensor.b'), findsOneWidget);
+  });
+
+  testWidgets('selecting a sensor in the picker charts that entity', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness([
+        numericSensorEntitiesProvider.overrideWithValue([
+          'sensor.a',
+          'sensor.b',
+        ]),
+        defaultChartEntityProvider.overrideWithValue('sensor.a'),
+        entityHistorySeriesProvider.overrideWith(
+          (ref, request) async => ChartSeries(
+            name: request.entityId,
+            points: [TimeSeriesPoint(time: DateTime.utc(2026), value: 1)],
+          ),
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Live history for sensor.a'), findsOneWidget);
+
+    // Open the dropdown and pick the other sensor.
+    await tester.tap(find.byType(DropdownButton<String>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('sensor.b').last);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Live history for sensor.b'), findsOneWidget);
+  });
+
+  testWidgets('no picker is shown when there are no numeric sensors', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness([
+        numericSensorEntitiesProvider.overrideWithValue(const []),
+        defaultChartEntityProvider.overrideWithValue('sensor.a'),
+        entityHistorySeriesProvider.overrideWith(
+          (ref, request) async => _series(),
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DropdownButton<String>), findsNothing);
+  });
 }
