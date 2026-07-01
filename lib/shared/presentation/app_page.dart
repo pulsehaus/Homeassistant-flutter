@@ -25,6 +25,7 @@ class AppPage extends StatelessWidget {
     required this.body,
     this.state = const PageState.content(),
     this.actions,
+    this.connectionIndicator,
     this.floatingActionButton,
     this.bottomNavigationBar,
     this.loadingBuilder,
@@ -46,6 +47,13 @@ class AppPage extends StatelessWidget {
   /// Optional app-bar actions (e.g. a filter or a toggle).
   final List<Widget>? actions;
 
+  /// Optional trailing app-bar widget shown after [actions], e.g. a live
+  /// connection-status indicator. Kept as a generic slot (rather than
+  /// [AppPage] importing a specific feature widget) so this shared template
+  /// stays feature-agnostic; screens that want the indicator pass it here —
+  /// see `ConnectionStatusIndicator` in the connection feature.
+  final Widget? connectionIndicator;
+
   final Widget? floatingActionButton;
 
   /// Optional navigation bar — supplied by the app shell when the page is
@@ -66,7 +74,10 @@ class AppPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(title), actions: actions),
+      appBar: AppBar(
+        title: Text(title),
+        actions: [...?actions, ?connectionIndicator],
+      ),
       body: SafeArea(child: _buildBody(context)),
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
@@ -101,6 +112,7 @@ class AppPage extends StatelessWidget {
     required Widget Function(BuildContext context, T data) builder,
     bool Function(T data)? isEmpty,
     List<Widget>? actions,
+    Widget? connectionIndicator,
     Widget? floatingActionButton,
     Widget? bottomNavigationBar,
     WidgetBuilder? loadingBuilder,
@@ -116,6 +128,7 @@ class AppPage extends StatelessWidget {
       builder: builder,
       isEmpty: isEmpty,
       actions: actions,
+      connectionIndicator: connectionIndicator,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
       loadingBuilder: loadingBuilder,
@@ -138,6 +151,7 @@ class _AsyncAppPage<T> extends StatelessWidget {
     required this.builder,
     required this.isEmpty,
     required this.actions,
+    this.connectionIndicator,
     required this.floatingActionButton,
     required this.bottomNavigationBar,
     required this.loadingBuilder,
@@ -152,6 +166,7 @@ class _AsyncAppPage<T> extends StatelessWidget {
   final Widget Function(BuildContext context, T data) builder;
   final bool Function(T data)? isEmpty;
   final List<Widget>? actions;
+  final Widget? connectionIndicator;
   final Widget? floatingActionButton;
   final Widget? bottomNavigationBar;
   final WidgetBuilder? loadingBuilder;
@@ -179,6 +194,7 @@ class _AsyncAppPage<T> extends StatelessWidget {
       title: title,
       state: state,
       actions: actions,
+      connectionIndicator: connectionIndicator,
       floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomNavigationBar,
       loadingBuilder: loadingBuilder,

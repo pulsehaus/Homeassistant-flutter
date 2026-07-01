@@ -91,6 +91,44 @@ void main() {
 
       expect(find.text('Retry'), findsNothing);
     });
+
+    testWidgets('omits the connection indicator slot when not supplied', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        host(const AppPage(title: 'My Page', body: Text('the body'))),
+      );
+
+      expect(find.byKey(const Key('connection_indicator_probe')), findsNothing);
+    });
+
+    testWidgets('renders a supplied connectionIndicator in the app bar', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        host(
+          const AppPage(
+            title: 'My Page',
+            body: Text('the body'),
+            connectionIndicator: SizedBox(
+              key: Key('connection_indicator_probe'),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const Key('connection_indicator_probe')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.byKey(const Key('connection_indicator_probe')),
+        ),
+        findsOneWidget,
+      );
+    });
   });
 
   group('AppPage.async (Riverpod bridge)', () {

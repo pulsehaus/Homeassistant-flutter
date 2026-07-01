@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/presentation/app_page.dart';
 import '../../../shared/presentation/page_state.dart';
+import '../../connection/presentation/connection_status_indicator.dart';
 import '../application/chart_providers.dart';
 import '../domain/chart_series.dart';
 import 'time_series_chart.dart';
@@ -98,6 +99,7 @@ class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
         emptyMessage:
             'No numeric sensor found yet.\nConnect an instance with a '
             'sensor.* entity to chart its history.',
+        connectionIndicator: ConnectionStatusIndicator(),
         body: SizedBox.shrink(),
       );
     }
@@ -114,6 +116,7 @@ class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
           'No recorded history for this entity in the last '
           '${period.inHours}h.',
       onRetry: () => ref.invalidate(entityHistorySeriesProvider(request)),
+      connectionIndicator: const ConnectionStatusIndicator(),
       actions: [
         SegmentedButton<HistoryRange>(
           segments: [
