@@ -111,4 +111,46 @@ void main() {
     expect(find.textContaining('Live history for sensor.temp'), findsOneWidget);
     expect(find.byKey(const ValueKey('fake-webview')), findsOneWidget);
   });
+
+  testWidgets('defaults to the 24h range and shows the three options', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness([
+        defaultChartEntityProvider.overrideWithValue('sensor.temp'),
+        entityHistorySeriesProvider.overrideWith(
+          (ref, request) async => _series(),
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('1h'), findsOneWidget);
+    expect(find.text('24h'), findsOneWidget);
+    expect(find.text('7d'), findsOneWidget);
+    expect(find.textContaining('last 24h'), findsOneWidget);
+  });
+
+  testWidgets('switching the range re-fetches history for that window', (
+    tester,
+  ) async {
+    final requestedPeriods = <Duration>[];
+    await tester.pumpWidget(
+      _harness([
+        defaultChartEntityProvider.overrideWithValue('sensor.temp'),
+        entityHistorySeriesProvider.overrideWith((ref, request) async {
+          requestedPeriods.add(request.period);
+          return _series();
+        }),
+      ]),
+    );
+    await tester.pumpAndSettle();
+    expect(requestedPeriods, contains(const Duration(hours: 24)));
+
+    await tester.tap(find.text('7d'));
+    await tester.pumpAndSettle();
+
+    expect(requestedPeriods, contains(const Duration(days: 7)));
+    expect(find.textContaining('last 168h'), findsOneWidget);
+  });
 }

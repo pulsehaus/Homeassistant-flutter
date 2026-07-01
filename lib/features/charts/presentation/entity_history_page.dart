@@ -7,6 +7,25 @@ import '../application/chart_providers.dart';
 import '../domain/chart_series.dart';
 import 'time_series_chart.dart';
 
+/// The trailing windows offered by the history screen's range selector.
+///
+/// Each option maps 1:1 to a [Duration] fed into [EntityHistoryRequest.period]
+/// — switching options re-keys the [entityHistorySeriesProvider] family, so
+/// Riverpod fetches (and independently caches) the new window.
+enum HistoryRange {
+  hour1(Duration(hours: 1), '1h'),
+  hours24(Duration(hours: 24), '24h'),
+  days7(Duration(days: 7), '7d');
+
+  const HistoryRange(this.period, this.label);
+
+  /// The trailing window this option represents.
+  final Duration period;
+
+  /// Short label shown on the selector segment.
+  final String label;
+}
+
 /// Screen that renders a *real* Home Assistant entity's recorded history as a
 /// chart, replacing the static sample example (#13).
 ///
@@ -16,14 +35,30 @@ import 'time_series_chart.dart';
 /// the resulting [AsyncValue] to [AppPage.async] so loading, error and empty
 /// states all use the shared template surfaces (#3). The chart itself is the
 /// unchanged [TimeSeriesChart] wrapper — only the data source is new.
-class EntityHistoryPage extends ConsumerWidget {
-  const EntityHistoryPage({super.key, this.period = const Duration(hours: 24)});
+///
+/// A [HistoryRange] selector (1h / 24h / 7d, #21) lets the user pick the
+/// trailing window: the selected option becomes the `period` on the
+/// [EntityHistoryRequest] key, so changing it re-fetches (and caches) the
+/// chart for that window.
+class EntityHistoryPage extends ConsumerStatefulWidget {
+  const EntityHistoryPage({
+    super.key,
+    this.initialRange = HistoryRange.hours24,
+  });
 
-  /// Trailing window of history to display.
-  final Duration period;
+  /// Range selected on first load. Defaults to 24h, matching the existing
+  /// [EntityHistoryRequest] default.
+  final HistoryRange initialRange;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EntityHistoryPage> createState() => _EntityHistoryPageState();
+}
+
+class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
+  late HistoryRange _range = widget.initialRange;
+
+  @override
+  Widget build(BuildContext context) {
     final entityId = ref.watch(defaultChartEntityProvider);
 
     // No numeric sensor is known yet (entities still streaming in, or the
@@ -39,6 +74,7 @@ class EntityHistoryPage extends ConsumerWidget {
       );
     }
 
+    final period = _range.period;
     final request = EntityHistoryRequest(entityId: entityId, period: period);
     final series = ref.watch(entityHistorySeriesProvider(request));
 
@@ -51,6 +87,16 @@ class EntityHistoryPage extends ConsumerWidget {
           '${period.inHours}h.',
       onRetry: () => ref.invalidate(entityHistorySeriesProvider(request)),
       actions: [
+        SegmentedButton<HistoryRange>(
+          segments: [
+            for (final range in HistoryRange.values)
+              ButtonSegment(value: range, label: Text(range.label)),
+          ],
+          selected: {_range},
+          onSelectionChanged: (selection) =>
+              setState(() => _range = selection.first),
+        ),
+        const SizedBox(width: 12),
         IconButton(
           tooltip: 'Refresh',
           icon: const Icon(Icons.refresh),
