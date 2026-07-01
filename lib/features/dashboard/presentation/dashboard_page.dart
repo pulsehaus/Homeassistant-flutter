@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/presentation/app_page.dart';
+import '../../connection/presentation/connection_status_indicator.dart';
 import '../application/dashboard_providers.dart';
 import '../domain/lovelace_card.dart';
 import '../domain/lovelace_config.dart';
@@ -28,6 +29,7 @@ class DashboardPage extends ConsumerWidget {
       isEmpty: (c) => c.firstView == null || c.firstView!.cards.isEmpty,
       emptyMessage: 'No dashboard cards yet.',
       onRetry: () => ref.invalidate(dashboardConfigStreamProvider),
+      connectionIndicator: const ConnectionStatusIndicator(),
       builder: (context, c) => ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [for (final card in c.firstView!.cards) _cardWidget(card)],

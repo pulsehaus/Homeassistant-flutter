@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/presentation/app_page.dart';
 import '../../connection/domain/entity_state.dart';
+import '../../connection/presentation/connection_status_indicator.dart';
 import '../application/entities_providers.dart';
 import '../application/entity_toggle_controller.dart';
 import '../domain/entity_group.dart';
@@ -29,6 +30,7 @@ class EntitiesOverviewPage extends ConsumerWidget {
       isEmpty: (data) => data.isEmpty,
       emptyMessage:
           'No entities yet.\nConnect an instance to see its entities here.',
+      connectionIndicator: const ConnectionStatusIndicator(),
       builder: (context, data) => _EntitiesList(groups: data),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../features/connection/presentation/connection_status_indicator.dart';
 import '../../../features/connection/presentation/disconnect_action.dart';
 import '../../../shared/presentation/app_page.dart';
 import '../application/counter_controller.dart';
@@ -23,6 +24,7 @@ class HomePage extends ConsumerWidget {
     return AppPage(
       title: 'Home Assistant',
       actions: const [DisconnectAction()],
+      connectionIndicator: const ConnectionStatusIndicator(),
       floatingActionButton: FloatingActionButton(
         onPressed: () =>
             ref.read(counterControllerProvider.notifier).increment(),
