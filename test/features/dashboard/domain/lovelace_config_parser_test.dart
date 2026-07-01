@@ -93,6 +93,68 @@ void main() {
       );
     });
 
+    test('history-graph card parses entities, title and hours_to_show', () {
+      final card = cardFromJson({
+        'type': 'history-graph',
+        'title': 'Temperatures',
+        'hours_to_show': 48,
+        'entities': ['sensor.living_room', 'sensor.bedroom'],
+      });
+
+      expect(
+        card,
+        const HistoryGraphCard(
+          title: 'Temperatures',
+          hoursToShow: 48,
+          entities: ['sensor.living_room', 'sensor.bedroom'],
+        ),
+      );
+    });
+
+    test('history-graph card defaults hours_to_show to 24 when absent', () {
+      final card = cardFromJson({
+        'type': 'history-graph',
+        'entities': ['sensor.living_room'],
+      });
+
+      expect(
+        card,
+        const HistoryGraphCard(
+          entities: ['sensor.living_room'],
+          hoursToShow: 24,
+        ),
+      );
+    });
+
+    test('history-graph card skips non-string entity entries', () {
+      final card = cardFromJson({
+        'type': 'history-graph',
+        'entities': [
+          'sensor.living_room',
+          42,
+          {'entity': 'sensor.should_be_skipped'},
+        ],
+      });
+
+      expect(card, const HistoryGraphCard(entities: ['sensor.living_room']));
+    });
+
+    test('history-graph card with missing or empty entities degrades to '
+        'UnsupportedCard', () {
+      expect(
+        cardFromJson({'type': 'history-graph'}),
+        const UnsupportedCard(type: 'history-graph'),
+      );
+      expect(
+        cardFromJson({'type': 'history-graph', 'entities': <dynamic>[]}),
+        const UnsupportedCard(type: 'history-graph'),
+      );
+      expect(
+        cardFromJson({'type': 'history-graph', 'entities': 'not-a-list'}),
+        const UnsupportedCard(type: 'history-graph'),
+      );
+    });
+
     test('unknown type degrades to UnsupportedCard carrying the type', () {
       expect(
         cardFromJson({'type': 'thermostat'}),

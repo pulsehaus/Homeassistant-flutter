@@ -93,6 +93,45 @@ class EntitiesRow {
   String toString() => 'EntitiesRow($entityId, name: $name)';
 }
 
+/// A history-graph card (`type: history-graph`): a title and one or more
+/// entities, each rendered as a trailing-history chart (reusing the charts
+/// feature's `TimeSeriesChart` — see `HistoryGraphCardWidget`).
+class HistoryGraphCard extends LovelaceCard {
+  const HistoryGraphCard({
+    required this.entities,
+    this.title,
+    this.hoursToShow = 24,
+  });
+
+  /// Entity ids to chart, e.g. `sensor.temperature`. HA's schema for this
+  /// card is a plain list of entity-id strings (unlike the `entities` card's
+  /// string-or-object dual shape), so no per-row normalisation is needed.
+  final List<String> entities;
+
+  /// Optional card heading.
+  final String? title;
+
+  /// The trailing window (in hours) to chart, from HA's `hours_to_show`.
+  /// Defaults to 24 when absent, matching `EntityHistoryRequest`'s default
+  /// period.
+  final int hoursToShow;
+
+  @override
+  bool operator ==(Object other) =>
+      other is HistoryGraphCard &&
+      other.title == title &&
+      other.hoursToShow == hoursToShow &&
+      _listEquals(other.entities, entities);
+
+  @override
+  int get hashCode => Object.hash(title, hoursToShow, Object.hashAll(entities));
+
+  @override
+  String toString() =>
+      'HistoryGraphCard(title: $title, hoursToShow: $hoursToShow, '
+      'entities: $entities)';
+}
+
 /// The graceful-degradation card: produced for any card whose `type` is unknown,
 /// missing, or whose (known) body is malformed. Rendering it shows a muted
 /// placeholder instead of crashing, so an unsupported card never breaks the page.
