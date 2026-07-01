@@ -63,6 +63,52 @@ jobs:
       - name: Run tests
         run: flutter test
 
+  # Job séparé, en parallèle du job rapide « Analyze & Test » : il compile la cible
+  # web (release) pour attraper toute régression du premier target officiel de
+  # l'app. Volontairement un job à part plutôt qu'une étape en plus dans
+  # analyze-and-test, pour ne jamais ralentir la boucle de feedback rapide
+  # (format + analyze + test) — les deux jobs tournent en même temps.
+  build-web:
+    name: Build (Web)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # Même source unique de vérité que les autres jobs : la version Flutter est
+      # lue depuis .fvmrc et passée à l'action Flutter (pas de FVM sur le runner,
+      # pas de deuxième version codée en dur).
+      - name: Read Flutter version from .fvmrc
+        id: fvm
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm.outputs.version }}
+          cache: true
+
+      # Même garde-fou anti-drift que les autres jobs.
+      - name: Verify Flutter version matches .fvmrc
+        run: |
+          expected="${{ steps.fvm.outputs.version }}"
+          actual="$(flutter --version --machine | jq -r .frameworkVersion)"
+          echo "Expected (.fvmrc): $expected"
+          echo "Actual (flutter --version): $actual"
+          if [ "$expected" != "$actual" ]; then
+            echo "::error::Flutter version mismatch — expected $expected (from .fvmrc) but found $actual installed."
+            exit 1
+          fi
+          echo "Flutter version matches .fvmrc ($expected)."
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Cœur du job : compile la cible web en mode release et échoue le workflow
+      # en cas d'erreur de build (exit code non nul de `flutter build web`).
+      - name: Build web (release)
+        run: flutter build web --release
+
   # Job séparé, volontairement distinct du job rapide « Analyze & Test » : il fait
   # tourner les suites device-driven de `integration_test/` sur un vrai émulateur
   # Android. Le job headless reste donc rapide et n'est jamais bloqué par celui-ci.
