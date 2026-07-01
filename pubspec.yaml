@@ -70,6 +70,12 @@ dependencies:
   # encrypted — only use it for settings that aren't sensitive.
   shared_preferences: ^2.5.5
 
+  # Reads app metadata (name, version, build number) from the platform at
+  # runtime. Used by the About screen in lib/features/about. Tests use the
+  # plugin's own PackageInfo.setMockInitialValues instead of a hand-rolled
+  # fake — see test/features/about.
+  package_info_plus: ^8.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
