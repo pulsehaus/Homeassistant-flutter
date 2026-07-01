@@ -195,6 +195,79 @@ void main() {
       );
     });
 
+    test('gauge card parses entity, name, unit, min/max and severity', () {
+      final card = cardFromJson({
+        'type': 'gauge',
+        'entity': 'sensor.humidity',
+        'name': 'Humidity',
+        'unit': '%',
+        'min': 10,
+        'max': 90,
+        'severity': {'green': 10, 'yellow': 50, 'red': 80},
+      });
+
+      expect(
+        card,
+        const GaugeCard(
+          entityId: 'sensor.humidity',
+          name: 'Humidity',
+          unit: '%',
+          min: 10,
+          max: 90,
+          severity: GaugeSeverity(green: 10, yellow: 50, red: 80),
+        ),
+      );
+    });
+
+    test('gauge card defaults min to 0, max to 100 and severity to null', () {
+      final card = cardFromJson({'type': 'gauge', 'entity': 'sensor.humidity'});
+
+      expect(card, const GaugeCard(entityId: 'sensor.humidity'));
+      expect((card as GaugeCard).min, 0);
+      expect(card.max, 100);
+      expect(card.severity, isNull);
+    });
+
+    test(
+      'gauge card with a partial severity map keeps only given thresholds',
+      () {
+        final card = cardFromJson({
+          'type': 'gauge',
+          'entity': 'sensor.humidity',
+          'severity': {'red': 80},
+        });
+
+        expect(
+          card,
+          const GaugeCard(
+            entityId: 'sensor.humidity',
+            severity: GaugeSeverity(red: 80),
+          ),
+        );
+      },
+    );
+
+    test('gauge card missing entity degrades to UnsupportedCard', () {
+      expect(
+        cardFromJson({'type': 'gauge'}),
+        const UnsupportedCard(type: 'gauge'),
+      );
+      expect(
+        cardFromJson({'type': 'gauge', 'entity': 42}),
+        const UnsupportedCard(type: 'gauge'),
+      );
+    });
+
+    test('gauge card ignores a non-map severity instead of throwing', () {
+      final card = cardFromJson({
+        'type': 'gauge',
+        'entity': 'sensor.humidity',
+        'severity': 'not-a-map',
+      });
+
+      expect(card, const GaugeCard(entityId: 'sensor.humidity'));
+    });
+
     test('unknown type degrades to UnsupportedCard carrying the type', () {
       expect(
         cardFromJson({'type': 'thermostat'}),
@@ -225,6 +298,95 @@ void main() {
         const EntitiesCard(),
       );
     });
+
+    test('glance card normalises both row shapes and skips bad rows', () {
+      final card = cardFromJson({
+        'type': 'glance',
+        'title': 'Overview',
+        'entities': [
+          'light.kitchen',
+          {'entity': 'light.living', 'name': 'Living'},
+          {'no_entity': true},
+          42,
+        ],
+      });
+
+      expect(
+        card,
+        const GlanceCard(
+          title: 'Overview',
+          rows: [
+            EntitiesRow(entityId: 'light.kitchen'),
+            EntitiesRow(entityId: 'light.living', name: 'Living'),
+          ],
+        ),
+      );
+    });
+
+    test('glance card defaults show_name/show_icon/show_state to true', () {
+      final card =
+          cardFromJson({
+                'type': 'glance',
+                'entities': ['light.kitchen'],
+              })
+              as GlanceCard;
+
+      expect(card.showName, isTrue);
+      expect(card.showIcon, isTrue);
+      expect(card.showState, isTrue);
+      expect(card.columns, isNull);
+    });
+
+    test('glance card parses show_name/show_icon/show_state and columns', () {
+      final card = cardFromJson({
+        'type': 'glance',
+        'entities': ['light.kitchen', 'light.living'],
+        'show_name': false,
+        'show_icon': false,
+        'show_state': false,
+        'columns': 5,
+      });
+
+      expect(
+        card,
+        const GlanceCard(
+          rows: [
+            EntitiesRow(entityId: 'light.kitchen'),
+            EntitiesRow(entityId: 'light.living'),
+          ],
+          showName: false,
+          showIcon: false,
+          showState: false,
+          columns: 5,
+        ),
+      );
+    });
+
+    test('glance card with missing or empty entities degrades to '
+        'UnsupportedCard', () {
+      expect(
+        cardFromJson({'type': 'glance'}),
+        const UnsupportedCard(type: 'glance'),
+      );
+      expect(
+        cardFromJson({'type': 'glance', 'entities': <dynamic>[]}),
+        const UnsupportedCard(type: 'glance'),
+      );
+      expect(
+        cardFromJson({'type': 'glance', 'entities': 'not-a-list'}),
+        const UnsupportedCard(type: 'glance'),
+      );
+      expect(
+        cardFromJson({
+          'type': 'glance',
+          'entities': [
+            {'no_entity': true},
+            42,
+          ],
+        }),
+        const UnsupportedCard(type: 'glance'),
+      );
+    });
   });
 
   test('models use value equality (cheap rebuilds and assertions)', () {
@@ -241,6 +403,22 @@ void main() {
     expect(
       const EntityCard(entityId: 'x'),
       isNot(const EntityCard(entityId: 'y')),
+    );
+    expect(
+      const GlanceCard(
+        title: 'A',
+        rows: [EntitiesRow(entityId: 'x')],
+      ),
+      const GlanceCard(
+        title: 'A',
+        rows: [EntitiesRow(entityId: 'x')],
+      ),
+    );
+    expect(
+      const GlanceCard(rows: [EntitiesRow(entityId: 'x')]),
+      isNot(
+        const GlanceCard(rows: [EntitiesRow(entityId: 'x')], showIcon: false),
+      ),
     );
   });
 }
