@@ -132,6 +132,67 @@ class HistoryGraphCard extends LovelaceCard {
       'entities: $entities)';
 }
 
+/// A glance card (`type: glance`): an optional title and a compact grid of
+/// entity tiles (icon + name + state), each individually toggleable via the
+/// `show_*` options.
+class GlanceCard extends LovelaceCard {
+  const GlanceCard({
+    this.title,
+    this.rows = const [],
+    this.showName = true,
+    this.showIcon = true,
+    this.showState = true,
+    this.columns,
+  });
+
+  /// Optional card heading.
+  final String? title;
+
+  /// The tiles to render, normalised the same way as [EntitiesCard]'s rows
+  /// regardless of the shape HA used in the config (a bare entity-id string
+  /// or an object).
+  final List<EntitiesRow> rows;
+
+  /// Whether each tile shows its entity's name. Defaults to `true`.
+  final bool showName;
+
+  /// Whether each tile shows its entity's icon. Defaults to `true`.
+  final bool showIcon;
+
+  /// Whether each tile shows its entity's state. Defaults to `true`.
+  final bool showState;
+
+  /// Explicit grid column count from HA's `columns`, or null to let the
+  /// widget pick a sensible default.
+  final int? columns;
+
+  @override
+  bool operator ==(Object other) =>
+      other is GlanceCard &&
+      other.title == title &&
+      other.showName == showName &&
+      other.showIcon == showIcon &&
+      other.showState == showState &&
+      other.columns == columns &&
+      _listEquals(other.rows, rows);
+
+  @override
+  int get hashCode => Object.hash(
+    title,
+    showName,
+    showIcon,
+    showState,
+    columns,
+    Object.hashAll(rows),
+  );
+
+  @override
+  String toString() =>
+      'GlanceCard(title: $title, rows: ${rows.length}, '
+      'showName: $showName, showIcon: $showIcon, showState: $showState, '
+      'columns: $columns)';
+}
+
 /// The graceful-degradation card: produced for any card whose `type` is unknown,
 /// missing, or whose (known) body is malformed. Rendering it shows a muted
 /// placeholder instead of crashing, so an unsupported card never breaks the page.

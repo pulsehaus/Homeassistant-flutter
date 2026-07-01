@@ -71,6 +71,17 @@ LovelaceCard cardFromJson(Map<String, dynamic> json) {
           title: json['title'] as String?,
           hoursToShow: (json['hours_to_show'] as num?)?.toInt() ?? 24,
         );
+      case 'glance':
+        final rows = _parseRows(json['entities']);
+        if (rows.isEmpty) return UnsupportedCard(type: type);
+        return GlanceCard(
+          title: json['title'] as String?,
+          rows: rows,
+          showName: json['show_name'] as bool? ?? true,
+          showIcon: json['show_icon'] as bool? ?? true,
+          showState: json['show_state'] as bool? ?? true,
+          columns: (json['columns'] as num?)?.toInt(),
+        );
       default:
         return UnsupportedCard(type: type);
     }
@@ -81,10 +92,11 @@ LovelaceCard cardFromJson(Map<String, dynamic> json) {
   }
 }
 
-/// Normalises the two row shapes HA allows in an `entities` card — a bare
+/// Normalises the two row shapes HA allows for an `entities` list — a bare
 /// `"light.kitchen"` string or a `{entity, name?}` object — into [EntitiesRow],
 /// so the widget layer never branches on the source shape. Non-conforming
-/// entries are skipped.
+/// entries are skipped. Shared by the `entities` and `glance` cards, which use
+/// the same dual shape.
 List<EntitiesRow> _parseRows(Object? raw) {
   if (raw is! List) return const [];
   final rows = <EntitiesRow>[];

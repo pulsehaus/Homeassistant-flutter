@@ -185,6 +185,95 @@ void main() {
         const EntitiesCard(),
       );
     });
+
+    test('glance card normalises both row shapes and skips bad rows', () {
+      final card = cardFromJson({
+        'type': 'glance',
+        'title': 'Overview',
+        'entities': [
+          'light.kitchen',
+          {'entity': 'light.living', 'name': 'Living'},
+          {'no_entity': true},
+          42,
+        ],
+      });
+
+      expect(
+        card,
+        const GlanceCard(
+          title: 'Overview',
+          rows: [
+            EntitiesRow(entityId: 'light.kitchen'),
+            EntitiesRow(entityId: 'light.living', name: 'Living'),
+          ],
+        ),
+      );
+    });
+
+    test('glance card defaults show_name/show_icon/show_state to true', () {
+      final card =
+          cardFromJson({
+                'type': 'glance',
+                'entities': ['light.kitchen'],
+              })
+              as GlanceCard;
+
+      expect(card.showName, isTrue);
+      expect(card.showIcon, isTrue);
+      expect(card.showState, isTrue);
+      expect(card.columns, isNull);
+    });
+
+    test('glance card parses show_name/show_icon/show_state and columns', () {
+      final card = cardFromJson({
+        'type': 'glance',
+        'entities': ['light.kitchen', 'light.living'],
+        'show_name': false,
+        'show_icon': false,
+        'show_state': false,
+        'columns': 5,
+      });
+
+      expect(
+        card,
+        const GlanceCard(
+          rows: [
+            EntitiesRow(entityId: 'light.kitchen'),
+            EntitiesRow(entityId: 'light.living'),
+          ],
+          showName: false,
+          showIcon: false,
+          showState: false,
+          columns: 5,
+        ),
+      );
+    });
+
+    test('glance card with missing or empty entities degrades to '
+        'UnsupportedCard', () {
+      expect(
+        cardFromJson({'type': 'glance'}),
+        const UnsupportedCard(type: 'glance'),
+      );
+      expect(
+        cardFromJson({'type': 'glance', 'entities': <dynamic>[]}),
+        const UnsupportedCard(type: 'glance'),
+      );
+      expect(
+        cardFromJson({'type': 'glance', 'entities': 'not-a-list'}),
+        const UnsupportedCard(type: 'glance'),
+      );
+      expect(
+        cardFromJson({
+          'type': 'glance',
+          'entities': [
+            {'no_entity': true},
+            42,
+          ],
+        }),
+        const UnsupportedCard(type: 'glance'),
+      );
+    });
   });
 
   test('models use value equality (cheap rebuilds and assertions)', () {
@@ -201,6 +290,22 @@ void main() {
     expect(
       const EntityCard(entityId: 'x'),
       isNot(const EntityCard(entityId: 'y')),
+    );
+    expect(
+      const GlanceCard(
+        title: 'A',
+        rows: [EntitiesRow(entityId: 'x')],
+      ),
+      const GlanceCard(
+        title: 'A',
+        rows: [EntitiesRow(entityId: 'x')],
+      ),
+    );
+    expect(
+      const GlanceCard(rows: [EntitiesRow(entityId: 'x')]),
+      isNot(
+        const GlanceCard(rows: [EntitiesRow(entityId: 'x')], showIcon: false),
+      ),
     );
   });
 }
