@@ -42,8 +42,8 @@ class DashboardPage extends ConsumerWidget {
   /// analyzer reports this `switch` as non-exhaustive until the arm exists, so
   /// the open/closed contract is compiler-enforced.
   Widget _cardWidget(LovelaceCard card) => switch (card) {
-    EntityCard c => EntityCardWidget(card: c),
-    EntitiesCard c => EntitiesCardWidget(card: c),
-    UnsupportedCard c => UnsupportedCardWidget(card: c),
+    final EntityCard c => EntityCardWidget(card: c),
+    final EntitiesCard c => EntitiesCardWidget(card: c),
+    final UnsupportedCard c => UnsupportedCardWidget(card: c),
   };
 }
