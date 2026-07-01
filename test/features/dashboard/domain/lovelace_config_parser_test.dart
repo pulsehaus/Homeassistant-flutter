@@ -155,6 +155,79 @@ void main() {
       );
     });
 
+    test('gauge card parses entity, name, unit, min/max and severity', () {
+      final card = cardFromJson({
+        'type': 'gauge',
+        'entity': 'sensor.humidity',
+        'name': 'Humidity',
+        'unit': '%',
+        'min': 10,
+        'max': 90,
+        'severity': {'green': 10, 'yellow': 50, 'red': 80},
+      });
+
+      expect(
+        card,
+        const GaugeCard(
+          entityId: 'sensor.humidity',
+          name: 'Humidity',
+          unit: '%',
+          min: 10,
+          max: 90,
+          severity: GaugeSeverity(green: 10, yellow: 50, red: 80),
+        ),
+      );
+    });
+
+    test('gauge card defaults min to 0, max to 100 and severity to null', () {
+      final card = cardFromJson({'type': 'gauge', 'entity': 'sensor.humidity'});
+
+      expect(card, const GaugeCard(entityId: 'sensor.humidity'));
+      expect((card as GaugeCard).min, 0);
+      expect(card.max, 100);
+      expect(card.severity, isNull);
+    });
+
+    test(
+      'gauge card with a partial severity map keeps only given thresholds',
+      () {
+        final card = cardFromJson({
+          'type': 'gauge',
+          'entity': 'sensor.humidity',
+          'severity': {'red': 80},
+        });
+
+        expect(
+          card,
+          const GaugeCard(
+            entityId: 'sensor.humidity',
+            severity: GaugeSeverity(red: 80),
+          ),
+        );
+      },
+    );
+
+    test('gauge card missing entity degrades to UnsupportedCard', () {
+      expect(
+        cardFromJson({'type': 'gauge'}),
+        const UnsupportedCard(type: 'gauge'),
+      );
+      expect(
+        cardFromJson({'type': 'gauge', 'entity': 42}),
+        const UnsupportedCard(type: 'gauge'),
+      );
+    });
+
+    test('gauge card ignores a non-map severity instead of throwing', () {
+      final card = cardFromJson({
+        'type': 'gauge',
+        'entity': 'sensor.humidity',
+        'severity': 'not-a-map',
+      });
+
+      expect(card, const GaugeCard(entityId: 'sensor.humidity'));
+    });
+
     test('unknown type degrades to UnsupportedCard carrying the type', () {
       expect(
         cardFromJson({'type': 'thermostat'}),
