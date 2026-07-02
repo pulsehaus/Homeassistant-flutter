@@ -27,10 +27,27 @@ class HaWebSocketClient {
     this.initialBackoff = const Duration(seconds: 1),
     this.maxBackoff = const Duration(seconds: 30),
     this.backoffMultiplier = 2.0,
-  }) : _connector = connector;
+  }) : _connector = connector,
+       _accessToken = config.accessToken;
 
   final HaConnectionConfig config;
   final HaSocketConnector _connector;
+
+  /// The token sent on the next `auth` handshake. Starts as [config]'s token
+  /// and is updated in place by [updateAccessToken] when the OAuth2 refresh
+  /// coordinator mints a new one — [config] itself stays immutable (it is
+  /// constructed once from the scoped `haConnectionConfigProvider` override),
+  /// so this mutable field is what lets a refreshed token reach the transport
+  /// without tearing down the provider scope. HA's `auth` handshake only
+  /// happens once per connection, so an update while already connected simply
+  /// takes effect on the next (re)connect.
+  String _accessToken;
+
+  /// Update the token used for future `auth` handshakes (the next reconnect,
+  /// or the next explicit [connect]). Does not affect an already-authenticated
+  /// live connection, since Home Assistant's WebSocket API only checks the
+  /// token once, at connection start.
+  void updateAccessToken(String accessToken) => _accessToken = accessToken;
 
   /// Backoff for the first reconnect attempt; doubles (by [backoffMultiplier])
   /// each subsequent attempt up to [maxBackoff].
@@ -209,7 +226,7 @@ class HaWebSocketClient {
     try {
       switch (message['type']) {
         case 'auth_required':
-          _socket?.send({'type': 'auth', 'access_token': config.accessToken});
+          _socket?.send({'type': 'auth', 'access_token': _accessToken});
         case 'auth_ok':
           unawaited(_onAuthenticated());
         case 'auth_invalid':

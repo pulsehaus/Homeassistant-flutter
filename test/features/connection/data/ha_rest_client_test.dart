@@ -125,5 +125,21 @@ void main() {
       );
       await expectLater(client.fetchStates(), throwsA(isA<HaRestException>()));
     });
+
+    test(
+      'updateAccessToken changes the bearer header on future requests',
+      () async {
+        late http.Request captured;
+        final client = _clientReturning((request) async {
+          captured = request;
+          return http.Response(jsonEncode([]), 200);
+        });
+
+        client.updateAccessToken('refreshed-token');
+        await client.fetchStates();
+
+        expect(captured.headers['Authorization'], 'Bearer refreshed-token');
+      },
+    );
   });
 }

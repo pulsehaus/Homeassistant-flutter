@@ -23,9 +23,12 @@ abstract interface class CredentialStore {
 
 /// [CredentialStore] backed by `flutter_secure_storage`.
 ///
-/// The URL and token are stored under separate keys; [read] only returns a
-/// value when *both* are present so a partially written record never yields
-/// half-valid credentials.
+/// The URL, access token and (optional) refresh token are stored under
+/// separate keys; [read] only returns a value when the URL and access token
+/// are *both* present so a partially written record never yields half-valid
+/// credentials. The refresh token key is optional so credentials stored before
+/// it existed (or created via the manual long-lived-token path, which has no
+/// refresh token) still round-trip successfully.
 ///
 /// Platform notes:
 /// - **iOS/macOS:** Keychain.
@@ -48,6 +51,7 @@ class SecureCredentialStore implements CredentialStore {
 
   static const _urlKey = 'ha_server_url';
   static const _tokenKey = 'ha_access_token';
+  static const _refreshTokenKey = 'ha_refresh_token';
 
   @override
   Future<ConnectionCredentials?> read() async {
@@ -56,18 +60,35 @@ class SecureCredentialStore implements CredentialStore {
     if (url == null || url.isEmpty || token == null || token.isEmpty) {
       return null;
     }
-    return ConnectionCredentials(serverUrl: url, accessToken: token);
+    // Credentials written before the refresh token existed simply have no
+    // value under this key — `read` returns null rather than failing, so
+    // those manual long-lived-token sessions keep working unchanged.
+    final refreshToken = await _storage.read(key: _refreshTokenKey);
+    return ConnectionCredentials(
+      serverUrl: url,
+      accessToken: token,
+      refreshToken: (refreshToken == null || refreshToken.isEmpty)
+          ? null
+          : refreshToken,
+    );
   }
 
   @override
   Future<void> write(ConnectionCredentials credentials) async {
     await _storage.write(key: _urlKey, value: credentials.serverUrl);
     await _storage.write(key: _tokenKey, value: credentials.accessToken);
+    final refreshToken = credentials.refreshToken;
+    if (refreshToken == null) {
+      await _storage.delete(key: _refreshTokenKey);
+    } else {
+      await _storage.write(key: _refreshTokenKey, value: refreshToken);
+    }
   }
 
   @override
   Future<void> clear() async {
     await _storage.delete(key: _urlKey);
     await _storage.delete(key: _tokenKey);
+    await _storage.delete(key: _refreshTokenKey);
   }
 }

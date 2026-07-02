@@ -56,6 +56,13 @@ dependencies:
   # docs/architecture.md / the issue #4 PR.
   graphify: ^1.2.1
 
+  # Embedded WebView used to drive Home Assistant's hosted OAuth2 authorize
+  # page (lib/features/connection/presentation/oauth_login_page.dart). Already
+  # pulled in transitively via graphify; declared directly here because the
+  # connection feature uses its NavigationDelegate API to intercept the
+  # redirect URI. See lib/features/connection/data/ha_auth_client.dart.
+  webview_flutter: ^4.14.0
+
   # Encrypted on-device storage for the Home Assistant server URL and long-lived
   # access token (Keychain on iOS/macOS, Keystore-backed EncryptedSharedPreferences
   # on Android, libsecret on Linux, and the Web Crypto API on web). Hidden behind

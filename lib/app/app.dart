@@ -6,6 +6,7 @@ import '../core/theme/theme_mode_providers.dart';
 import '../features/charts/presentation/entity_history_page.dart';
 import '../features/connection/application/connection_providers.dart';
 import '../features/connection/application/connection_session_controller.dart';
+import '../features/connection/application/token_refresh_coordinator.dart';
 import '../features/connection/domain/connection_credentials.dart';
 import '../features/connection/domain/ha_connection_config.dart';
 import '../features/connection/domain/server_url.dart';
@@ -79,36 +80,62 @@ class _ConnectedApp extends StatelessWidget {
           ),
         ),
       ],
-      child: AppShell(
-        // App-wide connection-lost notice, visible across every destination.
-        banner: const ConnectionBanner(),
-        destinations: const [
-          ShellDestination(
-            label: 'Home',
-            icon: Icons.home_outlined,
-            selectedIcon: Icons.home,
-            builder: _buildHome,
-          ),
-          ShellDestination(
-            label: 'Dashboard',
-            icon: Icons.space_dashboard_outlined,
-            selectedIcon: Icons.space_dashboard,
-            builder: _buildDashboard,
-          ),
-          ShellDestination(
-            label: 'Entities',
-            icon: Icons.dashboard_outlined,
-            selectedIcon: Icons.dashboard,
-            builder: _buildEntities,
-          ),
-          ShellDestination(
-            label: 'History',
-            icon: Icons.insights_outlined,
-            selectedIcon: Icons.insights,
-            builder: _buildHistory,
-          ),
-        ],
-      ),
+      // Reads tokenRefreshCoordinatorProvider into existence for the lifetime
+      // of the connected scope, so an OAuth2 session's access token keeps
+      // itself fresh in the background; a no-op for the manual
+      // long-lived-token path. See TokenRefreshCoordinator for why a
+      // refreshed token doesn't need this scope to be rebuilt.
+      child: const _TokenRefreshBootstrap(child: _AppShellContent()),
+    );
+  }
+}
+
+class _TokenRefreshBootstrap extends ConsumerWidget {
+  const _TokenRefreshBootstrap({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(tokenRefreshCoordinatorProvider);
+    return child;
+  }
+}
+
+class _AppShellContent extends StatelessWidget {
+  const _AppShellContent();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppShell(
+      // App-wide connection-lost notice, visible across every destination.
+      banner: const ConnectionBanner(),
+      destinations: const [
+        ShellDestination(
+          label: 'Home',
+          icon: Icons.home_outlined,
+          selectedIcon: Icons.home,
+          builder: _buildHome,
+        ),
+        ShellDestination(
+          label: 'Dashboard',
+          icon: Icons.space_dashboard_outlined,
+          selectedIcon: Icons.space_dashboard,
+          builder: _buildDashboard,
+        ),
+        ShellDestination(
+          label: 'Entities',
+          icon: Icons.dashboard_outlined,
+          selectedIcon: Icons.dashboard,
+          builder: _buildEntities,
+        ),
+        ShellDestination(
+          label: 'History',
+          icon: Icons.insights_outlined,
+          selectedIcon: Icons.insights,
+          builder: _buildHistory,
+        ),
+      ],
     );
   }
 
