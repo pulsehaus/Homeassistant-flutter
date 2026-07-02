@@ -8,6 +8,7 @@ import 'package:homeassistant_flutter/features/charts/domain/chart_series.dart';
 import 'package:homeassistant_flutter/features/charts/presentation/entity_history_page.dart';
 
 import '../fake_webview.dart';
+import '../fakes/fake_chart_selection_store.dart';
 
 ChartSeries _series() => ChartSeries(
   name: 'Living room',
@@ -19,7 +20,14 @@ ChartSeries _series() => ChartSeries(
 );
 
 Widget _harness(List<Override> overrides) => ProviderScope(
-  overrides: overrides,
+  overrides: [
+    // A fresh in-memory store by default so tests that don't care about
+    // persistence (most of them) don't touch real platform storage; tests
+    // that do care override chartSelectionStoreProvider themselves, which
+    // takes precedence since it comes after this default in the list.
+    chartSelectionStoreProvider.overrideWithValue(FakeChartSelectionStore()),
+    ...overrides,
+  ],
   child: const MaterialApp(home: EntityHistoryPage()),
 );
 
@@ -259,5 +267,133 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(fetchCount, 2);
+  });
+
+  group('persisted selection (#61)', () {
+    testWidgets('restores a previously selected entity and range on startup', (
+      tester,
+    ) async {
+      // Simulates a returning user: the store already has a selection from
+      // a previous session, before the widget is ever built.
+      final store = FakeChartSelectionStore(
+        initialEntityId: 'sensor.b',
+        initialRange: HistoryRange.days7,
+      );
+      final requestedPeriods = <Duration>[];
+
+      await tester.pumpWidget(
+        _harness([
+          chartSelectionStoreProvider.overrideWithValue(store),
+          numericSensorEntitiesProvider.overrideWithValue([
+            'sensor.a',
+            'sensor.b',
+          ]),
+          defaultChartEntityProvider.overrideWithValue('sensor.a'),
+          entityHistorySeriesProvider.overrideWith((ref, request) async {
+            requestedPeriods.add(request.period);
+            return ChartSeries(name: request.entityId, points: const []);
+          }),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      // The stored entity (not the default) and the stored range (not the
+      // 24h default) are both restored, with no user interaction.
+      expect(
+        find.textContaining('No history for this entity yet'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('sensor.b'), findsWidgets);
+      expect(requestedPeriods, contains(const Duration(days: 7)));
+    });
+
+    testWidgets(
+      'a selection made in one session is loaded by a fresh widget tree '
+      'reading the same store (simulated restart)',
+      (tester) async {
+        final store = FakeChartSelectionStore();
+
+        // "Session 1": pick a non-default sensor and a non-default range.
+        await tester.pumpWidget(
+          _harness([
+            chartSelectionStoreProvider.overrideWithValue(store),
+            numericSensorEntitiesProvider.overrideWithValue([
+              'sensor.a',
+              'sensor.b',
+            ]),
+            defaultChartEntityProvider.overrideWithValue('sensor.a'),
+            entityHistorySeriesProvider.overrideWith(
+              (ref, request) async => _series(),
+            ),
+          ]),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byType(DropdownButton<String>));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('sensor.b').last);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('7d'));
+        await tester.pumpAndSettle();
+
+        expect(store.entityIdWrites, ['sensor.b']);
+        expect(store.rangeWrites, [HistoryRange.days7]);
+
+        // Tear down session 1's widget tree entirely (disposing its
+        // ProviderScope/container) before mounting session 2 — otherwise
+        // Flutter's element reconciliation would just reuse the existing
+        // ProviderScope element (same type/position) and its already-resolved
+        // provider state, which wouldn't actually exercise a fresh read from
+        // the store the way a real app restart does.
+        await tester.pumpWidget(const SizedBox.shrink());
+
+        // "Session 2": a brand new widget tree (simulating an app restart)
+        // reading the same (now populated) store.
+        final requestedPeriods = <Duration>[];
+        await tester.pumpWidget(
+          _harness([
+            chartSelectionStoreProvider.overrideWithValue(store),
+            numericSensorEntitiesProvider.overrideWithValue([
+              'sensor.a',
+              'sensor.b',
+            ]),
+            defaultChartEntityProvider.overrideWithValue('sensor.a'),
+            entityHistorySeriesProvider.overrideWith((ref, request) async {
+              requestedPeriods.add(request.period);
+              return ChartSeries(name: request.entityId, points: const []);
+            }),
+          ]),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('sensor.b'), findsWidgets);
+        expect(requestedPeriods, contains(const Duration(days: 7)));
+      },
+    );
+
+    testWidgets('first launch (nothing stored) keeps today\'s defaults', (
+      tester,
+    ) async {
+      final requestedPeriods = <Duration>[];
+      await tester.pumpWidget(
+        _harness([
+          // FakeChartSelectionStore() from the harness default is empty,
+          // simulating a fresh install with nothing persisted yet.
+          defaultChartEntityProvider.overrideWithValue('sensor.temp'),
+          entityHistorySeriesProvider.overrideWith((ref, request) async {
+            requestedPeriods.add(request.period);
+            return _series();
+          }),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Live history for sensor.temp'),
+        findsOneWidget,
+      );
+      expect(requestedPeriods, [const Duration(hours: 24)]);
+    });
   });
 }

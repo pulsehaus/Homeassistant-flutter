@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:homeassistant_flutter/app/app.dart';
 import 'package:homeassistant_flutter/core/theme/theme_mode_providers.dart';
+import 'package:homeassistant_flutter/features/charts/application/chart_providers.dart';
 import 'package:homeassistant_flutter/features/connection/application/connection_providers.dart';
 import 'package:homeassistant_flutter/features/connection/application/connection_setup_providers.dart';
 import 'package:homeassistant_flutter/features/connection/data/ha_websocket_client.dart';
@@ -19,6 +20,7 @@ import 'package:homeassistant_flutter/features/connection/domain/ha_connection_c
 
 import 'core/theme/fakes/fake_theme_mode_store.dart';
 import 'features/charts/fake_webview.dart';
+import 'features/charts/fakes/fake_chart_selection_store.dart';
 import 'features/connection/fakes/fake_credential_store.dart';
 import 'features/connection/fakes/fake_ha_socket.dart';
 
@@ -63,6 +65,7 @@ void main() {
       ),
       haWebSocketClientProvider.overrideWithValue(fakeClient),
       themeModeStoreProvider.overrideWithValue(FakeThemeModeStore()),
+      chartSelectionStoreProvider.overrideWithValue(FakeChartSelectionStore()),
     ],
     child: const HomeAssistantApp(),
   );
