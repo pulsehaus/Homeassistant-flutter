@@ -13,6 +13,7 @@ import 'cards/entity_card_widget.dart';
 import 'cards/gauge_card_widget.dart';
 import 'cards/glance_card_widget.dart';
 import 'cards/history_graph_card_widget.dart';
+import 'cards/media_player_card_widget.dart';
 import 'cards/unsupported_card_widget.dart';
 
 /// Renders the default Lovelace dashboard fetched from Home Assistant.
@@ -171,6 +172,7 @@ class _ViewCards extends ConsumerWidget {
     final GaugeCard c => GaugeCardWidget(card: c),
     final GlanceCard c => GlanceCardWidget(card: c),
     final ClimateCard c => ClimateCardWidget(card: c),
+    final MediaPlayerCard c => MediaPlayerCardWidget(card: c),
     final UnsupportedCard c => UnsupportedCardWidget(card: c),
   };
 }

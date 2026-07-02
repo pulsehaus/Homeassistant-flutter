@@ -109,6 +109,10 @@ LovelaceCard cardFromJson(Map<String, dynamic> json) {
         final id = json['entity'];
         if (id is! String) return UnsupportedCard(type: type);
         return ClimateCard(entityId: id, name: json['name'] as String?);
+      case 'media-control':
+        final id = json['entity'];
+        if (id is! String) return UnsupportedCard(type: type);
+        return MediaPlayerCard(entityId: id, name: json['name'] as String?);
       default:
         return UnsupportedCard(type: type);
     }

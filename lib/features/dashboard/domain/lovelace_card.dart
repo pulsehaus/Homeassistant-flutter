@@ -362,6 +362,38 @@ class ClimateCard extends LovelaceCard {
   String toString() => 'ClimateCard($entityId, name: $name)';
 }
 
+/// A media-player card (`type: media-control`, matching HA's own Lovelace
+/// card — see [cardFromJson]): a `media_player` entity (TV, speaker,
+/// Chromecast, Sonos, …) with basic playback control.
+///
+/// Only the entity id and an optional display name are modelled here (the
+/// same minimal shape as [ClimateCard]/[GaugeCard]): the playback state,
+/// `media_title`/`media_artist` and volume all come from the live entity's
+/// state/attributes at render time ([MediaPlayerCardWidget], see that file's
+/// doc comment), not from the Lovelace config.
+class MediaPlayerCard extends LovelaceCard {
+  const MediaPlayerCard({required this.entityId, this.name});
+
+  /// The media player entity this card controls, e.g. `media_player.living_room`.
+  final String entityId;
+
+  /// An explicit display name from the config, or null to fall back to the
+  /// entity's friendly name / id at render time.
+  final String? name;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MediaPlayerCard &&
+      other.entityId == entityId &&
+      other.name == name;
+
+  @override
+  int get hashCode => Object.hash(entityId, name);
+
+  @override
+  String toString() => 'MediaPlayerCard($entityId, name: $name)';
+}
+
 /// The graceful-degradation card: produced for any card whose `type` is unknown,
 /// missing, or whose (known) body is malformed. Rendering it shows a muted
 /// placeholder instead of crashing, so an unsupported card never breaks the page.

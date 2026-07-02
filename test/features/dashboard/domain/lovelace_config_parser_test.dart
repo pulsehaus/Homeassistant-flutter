@@ -298,6 +298,42 @@ void main() {
       );
     });
 
+    test('media-control card parses entity and name', () {
+      expect(
+        cardFromJson({
+          'type': 'media-control',
+          'entity': 'media_player.living_room',
+          'name': 'Living Room Speaker',
+        }),
+        const MediaPlayerCard(
+          entityId: 'media_player.living_room',
+          name: 'Living Room Speaker',
+        ),
+      );
+    });
+
+    test('media-control card with no explicit name leaves it null', () {
+      expect(
+        cardFromJson({
+          'type': 'media-control',
+          'entity': 'media_player.living_room',
+        }),
+        const MediaPlayerCard(entityId: 'media_player.living_room'),
+      );
+    });
+
+    test('media-control card missing or non-string entity degrades to '
+        'UnsupportedCard', () {
+      expect(
+        cardFromJson({'type': 'media-control'}),
+        const UnsupportedCard(type: 'media-control'),
+      );
+      expect(
+        cardFromJson({'type': 'media-control', 'entity': 42}),
+        const UnsupportedCard(type: 'media-control'),
+      );
+    });
+
     test('unknown type degrades to UnsupportedCard carrying the type', () {
       expect(
         cardFromJson({'type': 'thermostat'}),
