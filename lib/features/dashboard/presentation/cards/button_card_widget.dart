@@ -7,6 +7,7 @@ import '../../../entities/application/entity_toggle_controller.dart';
 import '../../../entities/domain/entity_toggle.dart';
 import '../../domain/lovelace_card.dart';
 import 'entity_card_widget.dart' show cardEntityLabel;
+import 'mdi_icon_resolver.dart';
 
 /// Renders a `button` card: a compact, tappable tile showing an icon, an
 /// optional name and (optionally) the entity's state.
@@ -126,15 +127,16 @@ class _ButtonCardWidgetState extends ConsumerState<ButtonCardWidget> {
 
 /// Resolves the icon to show for a button card.
 ///
-/// HA's `icon` config field is an MDI icon *name* (e.g. `mdi:lightbulb`), and
-/// this app has no MDI-name-to-[IconData] mapping (would need an extra
-/// package such as `material_design_icons_flutter` — left for a follow-up).
-/// Rather than silently drop an explicit `icon` or crash, an icon name present
-/// in the config is treated as a signal that *some* icon was requested and
-/// falls back to a domain-based default, same idea as other cards inferring
-/// defaults from the entity's domain. Absent both, a generic button icon is
-/// used.
+/// HA's `icon` config field is an MDI icon *name* (e.g. `mdi:lightbulb`).
+/// When it's set and resolves via [resolveMdiIcon], that real icon wins.
+/// Otherwise this falls back to a domain-based default (same idea as other
+/// cards inferring defaults from the entity's domain), and finally to a
+/// generic button icon when neither is available. This never crashes on an
+/// unrecognized icon name — [resolveMdiIcon] returns null instead.
 IconData _resolveIcon(String? icon, EntityState? entity) {
+  final mdiIcon = resolveMdiIcon(icon);
+  if (mdiIcon != null) return mdiIcon;
+
   final domain = entity?.domain;
   if (domain != null) {
     final byDomain = _domainIcons[domain];

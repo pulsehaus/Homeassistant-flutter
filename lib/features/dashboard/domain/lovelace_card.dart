@@ -161,10 +161,9 @@ class ButtonCard extends LovelaceCard {
   /// entity's friendly name / id at render time.
   final String? name;
 
-  /// An HA icon name from the config, e.g. `mdi:lightbulb`. This app has no
-  /// MDI-to-[IconData] mapping, so [ButtonCardWidget] can't render arbitrary
-  /// icon names yet; it falls back to a domain-based default icon instead of
-  /// silently dropping the field.
+  /// An HA icon name from the config, e.g. `mdi:lightbulb`. [ButtonCardWidget]
+  /// resolves this to a real MDI [IconData] (see `resolveMdiIcon`), falling
+  /// back to a domain-based default icon when it's absent or doesn't resolve.
   final String? icon;
 
   /// Whether to show the resolved name label. Defaults to `true`, matching
