@@ -52,6 +52,12 @@ void main() {
     accessToken: 'secret-token',
   );
 
+  const oauthCredentials = ConnectionCredentials(
+    serverUrl: 'https://ha.example.com',
+    accessToken: 'oauth-access-token',
+    refreshToken: 'oauth-refresh-token',
+  );
+
   group('SecureCredentialStore', () {
     test('read returns null when nothing is stored', () async {
       expect(await store().read(), isNull);
@@ -71,9 +77,43 @@ void main() {
       expect(await store().read(), isNull);
     });
 
-    test('clear removes both keys', () async {
+    test('read returns credentials with a null refreshToken when it was never '
+        'written (backward compatibility with pre-OAuth2 records)', () async {
+      // Simulate credentials stored before the refresh-token key existed:
+      // only the URL and access-token keys are present.
+      backing['ha_server_url'] = credentials.serverUrl;
+      backing['ha_access_token'] = credentials.accessToken;
+
+      final read = await store().read();
+
+      expect(read, credentials);
+      expect(read?.refreshToken, isNull);
+    });
+
+    test('write then read round-trips an OAuth2 session including the refresh '
+        'token', () async {
       final s = store();
+      await s.write(oauthCredentials);
+
+      final read = await s.read();
+      expect(read, oauthCredentials);
+      expect(read?.refreshToken, 'oauth-refresh-token');
+    });
+
+    test('writing credentials with no refresh token clears any previously '
+        'stored one', () async {
+      final s = store();
+      await s.write(oauthCredentials);
       await s.write(credentials);
+
+      expect(backing.containsKey('ha_refresh_token'), isFalse);
+      final read = await s.read();
+      expect(read?.refreshToken, isNull);
+    });
+
+    test('clear removes all keys, including the refresh token', () async {
+      final s = store();
+      await s.write(oauthCredentials);
       await s.clear();
 
       expect(backing, isEmpty);

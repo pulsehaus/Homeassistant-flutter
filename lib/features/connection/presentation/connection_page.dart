@@ -3,15 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/connection_form_controller.dart';
 import '../domain/server_url.dart';
+import 'oauth_login_page.dart';
 
 /// First-run screen where the user points the app at their Home Assistant
-/// instance: a server URL and a long-lived access token. Built on the shared
-/// [AppPage] template so it inherits the app bar and surface treatment.
+/// instance. The primary path is **Log in**, which drives the user through
+/// HA's hosted OAuth2 authorize page in an embedded WebView
+/// ([OAuthLoginPage]) — no token to find or copy. The manual long-lived-token
+/// form (the only option before this feature) remains available as a
+/// collapsed "Advanced" section, since some reverse-proxy setups make OAuth
+/// redirects impractical.
 ///
-/// Submitting validates the credentials against the live instance (a real
-/// WebSocket `auth` handshake) before saving — invalid input shows an inline
-/// error and is never persisted. Logic lives in [ConnectionFormController]; this
-/// widget only collects input and reflects state.
+/// Submitting the advanced form validates the credentials against the live
+/// instance (a real WebSocket `auth` handshake) before saving — invalid input
+/// shows an inline error and is never persisted. Logic lives in
+/// [ConnectionFormController]; this widget only collects input and reflects
+/// state.
 class ConnectionPage extends ConsumerStatefulWidget {
   const ConnectionPage({super.key});
 
@@ -24,6 +30,7 @@ class _ConnectionPageState extends ConsumerState<ConnectionPage> {
   final _urlController = TextEditingController();
   final _tokenController = TextEditingController();
   bool _obscureToken = true;
+  bool _advancedExpanded = false;
 
   @override
   void dispose() {
@@ -42,6 +49,23 @@ class _ConnectionPageState extends ConsumerState<ConnectionPage> {
           serverUrl: _urlController.text,
           accessToken: _tokenController.text,
         );
+  }
+
+  Future<void> _logIn() async {
+    if (!ServerUrl.isValid(_urlController.text)) {
+      // Reuse the URL field's own validator for inline feedback. Only that
+      // one field is registered with the Form while the advanced section is
+      // collapsed, so this can't accidentally surface the token field's
+      // "required" error too.
+      _formKey.currentState?.validate();
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => OAuthLoginPage(serverUrl: _urlController.text),
+      ),
+    );
   }
 
   @override
@@ -68,8 +92,8 @@ class _ConnectionPageState extends ConsumerState<ConnectionPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Enter your instance address and a long-lived access '
-                      'token to get started.',
+                      'Enter your instance address, then log in with your '
+                      'Home Assistant account.',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -91,49 +115,25 @@ class _ConnectionPageState extends ConsumerState<ConnectionPage> {
                           ? null
                           : 'Enter a valid URL, e.g. https://ha.example.com',
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      key: const Key('connection_token_field'),
-                      controller: _tokenController,
-                      enabled: !isSubmitting,
-                      obscureText: _obscureToken,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      decoration: InputDecoration(
-                        labelText: 'Long-lived access token',
-                        prefixIcon: const Icon(Icons.key),
-                        border: const OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          tooltip: _obscureToken ? 'Show token' : 'Hide token',
-                          icon: Icon(
-                            _obscureToken
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                          ),
-                          onPressed: () =>
-                              setState(() => _obscureToken = !_obscureToken),
-                        ),
-                      ),
-                      validator: (value) =>
-                          (value == null || value.trim().isEmpty)
-                          ? 'Enter a long-lived access token'
-                          : null,
-                    ),
-                    if (errorMessage != null) ...[
-                      const SizedBox(height: 16),
-                      _ErrorBanner(message: errorMessage),
-                    ],
                     const SizedBox(height: 24),
-                    FilledButton(
-                      key: const Key('connection_submit_button'),
-                      onPressed: isSubmitting ? null : _submit,
-                      child: isSubmitting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Connect'),
+                    FilledButton.icon(
+                      key: const Key('oauth_login_button'),
+                      onPressed: isSubmitting ? null : _logIn,
+                      icon: const Icon(Icons.login),
+                      label: const Text('Log in'),
+                    ),
+                    const SizedBox(height: 8),
+                    _AdvancedTokenSection(
+                      expanded: _advancedExpanded,
+                      onExpansionChanged: (expanded) =>
+                          setState(() => _advancedExpanded = expanded),
+                      tokenController: _tokenController,
+                      obscureToken: _obscureToken,
+                      onToggleObscure: () =>
+                          setState(() => _obscureToken = !_obscureToken),
+                      isSubmitting: isSubmitting,
+                      errorMessage: errorMessage,
+                      onSubmit: _submit,
                     ),
                   ],
                 ),
@@ -141,6 +141,102 @@ class _ConnectionPageState extends ConsumerState<ConnectionPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Collapsed-by-default section holding the manual long-lived-token form —
+/// the fallback path for setups (e.g. some reverse proxies) where the OAuth2
+/// redirect can't be intercepted.
+class _AdvancedTokenSection extends StatelessWidget {
+  const _AdvancedTokenSection({
+    required this.expanded,
+    required this.onExpansionChanged,
+    required this.tokenController,
+    required this.obscureToken,
+    required this.onToggleObscure,
+    required this.isSubmitting,
+    required this.errorMessage,
+    required this.onSubmit,
+  });
+
+  final bool expanded;
+  final ValueChanged<bool> onExpansionChanged;
+  final TextEditingController tokenController;
+  final bool obscureToken;
+  final VoidCallback onToggleObscure;
+  final bool isSubmitting;
+  final String? errorMessage;
+  final Future<void> Function() onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Theme(
+      // ExpansionTile draws its own divider lines by default; drop them so it
+      // sits quietly under the primary "Log in" button.
+      data: theme.copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        key: const Key('advanced_token_section'),
+        initiallyExpanded: expanded,
+        onExpansionChanged: onExpansionChanged,
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(top: 16),
+        title: Text(
+          'Advanced: use a long-lived access token instead',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                key: const Key('connection_token_field'),
+                controller: tokenController,
+                enabled: !isSubmitting,
+                obscureText: obscureToken,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: 'Long-lived access token',
+                  prefixIcon: const Icon(Icons.key),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    tooltip: obscureToken ? 'Show token' : 'Hide token',
+                    icon: Icon(
+                      obscureToken
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                    onPressed: onToggleObscure,
+                  ),
+                ),
+                validator: (value) => (value == null || value.trim().isEmpty)
+                    ? 'Enter a long-lived access token'
+                    : null,
+              ),
+              if (errorMessage != null) ...[
+                const SizedBox(height: 16),
+                _ErrorBanner(message: errorMessage!),
+              ],
+              const SizedBox(height: 16),
+              FilledButton(
+                key: const Key('connection_submit_button'),
+                onPressed: isSubmitting ? null : onSubmit,
+                child: isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Connect with token'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

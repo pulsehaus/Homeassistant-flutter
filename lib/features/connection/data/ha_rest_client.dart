@@ -16,6 +16,7 @@ import '../domain/ha_exception.dart';
 class HaRestClient {
   HaRestClient({required HaConnectionConfig config, http.Client? httpClient})
     : _config = config,
+      _accessToken = config.accessToken,
       _client = httpClient ?? http.Client(),
       _ownsClient = httpClient == null;
 
@@ -23,8 +24,18 @@ class HaRestClient {
   final http.Client _client;
   final bool _ownsClient;
 
+  /// The token sent with every request. Starts as [_config]'s token and is
+  /// updated in place by [updateAccessToken] when the OAuth2 refresh
+  /// coordinator mints a new one, since [_config] itself stays immutable. Read
+  /// fresh on every request (via [_headers]), so an update takes effect
+  /// immediately — no reconnect needed, unlike the WebSocket client.
+  String _accessToken;
+
+  /// Update the token attached to future requests.
+  void updateAccessToken(String accessToken) => _accessToken = accessToken;
+
   Map<String, String> get _headers => {
-    'Authorization': 'Bearer ${_config.accessToken}',
+    'Authorization': 'Bearer $_accessToken',
     'Content-Type': 'application/json',
   };
 

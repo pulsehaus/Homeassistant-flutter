@@ -97,6 +97,32 @@ void main() {
         expect(connector.calls, 1, reason: 'must not retry with a bad token');
       },
     );
+
+    test('updateAccessToken changes the token used on the next auth handshake '
+        'without needing config itself to change', () async {
+      final connector = FakeConnector();
+      final client = HaWebSocketClient(
+        config: _config,
+        connector: connector.connect,
+      );
+      addTearDown(client.dispose);
+
+      client.updateAccessToken('refreshed-token');
+      await client.connect();
+      await pumpEventQueue();
+      final socket = connector.last;
+
+      socket.serverSend({'type': 'auth_required'});
+      await pumpEventQueue();
+
+      expect(socket.sent.first, {
+        'type': 'auth',
+        'access_token': 'refreshed-token',
+      });
+      // The immutable config is untouched — only the client's internal
+      // token changed.
+      expect(client.config.accessToken, 'test-token');
+    });
   });
 
   group('HaWebSocketClient — entity store', () {

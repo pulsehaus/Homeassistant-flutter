@@ -29,7 +29,15 @@ void main() {
     return store;
   }
 
-  testWidgets('renders the URL and token fields and a connect button', (
+  /// The manual long-lived-token form lives collapsed under the "Advanced"
+  /// section; expand it before interacting with the token field or submit
+  /// button, mirroring the real user flow.
+  Future<void> expandAdvancedSection(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('advanced_token_section')));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('renders the URL field and a primary Log in button', (
     tester,
   ) async {
     await pumpPage(
@@ -38,8 +46,37 @@ void main() {
     );
 
     expect(find.byKey(const Key('connection_url_field')), findsOneWidget);
+    expect(find.byKey(const Key('oauth_login_button')), findsOneWidget);
+    expect(find.text('Log in'), findsOneWidget);
+  });
+
+  testWidgets('the advanced token form is collapsed by default', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      validationResult: const CredentialValidationSuccess(),
+    );
+
+    expect(
+      find.text('Advanced: use a long-lived access token instead'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('connection_token_field')), findsNothing);
+  });
+
+  testWidgets('expanding Advanced reveals the token field and connect button', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      validationResult: const CredentialValidationSuccess(),
+    );
+
+    await expandAdvancedSection(tester);
+
     expect(find.byKey(const Key('connection_token_field')), findsOneWidget);
-    expect(find.text('Connect'), findsOneWidget);
+    expect(find.text('Connect with token'), findsOneWidget);
   });
 
   testWidgets('shows inline field errors for empty input and does not save', (
@@ -49,6 +86,7 @@ void main() {
       tester,
       validationResult: const CredentialValidationSuccess(),
     );
+    await expandAdvancedSection(tester);
 
     await tester.tap(find.byKey(const Key('connection_submit_button')));
     await tester.pump();
@@ -71,6 +109,7 @@ void main() {
         isAuth: true,
       ),
     );
+    await expandAdvancedSection(tester);
 
     await tester.enterText(
       find.byKey(const Key('connection_url_field')),
@@ -94,6 +133,7 @@ void main() {
       tester,
       validationResult: const CredentialValidationSuccess(),
     );
+    await expandAdvancedSection(tester);
 
     await tester.enterText(
       find.byKey(const Key('connection_url_field')),
@@ -112,5 +152,24 @@ void main() {
         accessToken: 'good-token',
       ),
     ]);
+  });
+
+  testWidgets('Log in shows an inline error for an invalid server URL', (
+    tester,
+  ) async {
+    await pumpPage(
+      tester,
+      validationResult: const CredentialValidationSuccess(),
+    );
+
+    await tester.tap(find.byKey(const Key('oauth_login_button')));
+    await tester.pump();
+
+    expect(
+      find.text('Enter a valid URL, e.g. https://ha.example.com'),
+      findsOneWidget,
+    );
+    // Doesn't navigate anywhere on invalid input.
+    expect(find.byType(ConnectionPage), findsOneWidget);
   });
 }
