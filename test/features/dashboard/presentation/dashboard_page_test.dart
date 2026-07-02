@@ -114,7 +114,11 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('No dashboard cards yet.'), findsOneWidget);
+    expect(find.text('No dashboard cards yet'), findsOneWidget);
+    expect(find.textContaining('fetched from Home Assistant'), findsOneWidget);
+    expect(find.byIcon(Icons.dashboard_customize_outlined), findsOneWidget);
+    // Not the shared template's generic default icon.
+    expect(find.byIcon(Icons.inbox_outlined), findsNothing);
   });
 
   testWidgets('shows the loading surface while the config is pending', (

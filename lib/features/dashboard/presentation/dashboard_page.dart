@@ -66,7 +66,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
       title: 'Dashboard',
       value: config,
       isEmpty: (c) => c.firstView == null || c.firstView!.cards.isEmpty,
-      emptyMessage: 'No dashboard cards yet.',
+      emptyBuilder: (context) => const _NoDashboardCardsEmptyState(),
       onRetry: () => ref.invalidate(dashboardConfigStreamProvider),
       connectionIndicator: const ConnectionStatusIndicator(),
       builder: (context, c) {
@@ -130,4 +130,50 @@ class _ViewCards extends StatelessWidget {
     final GlanceCard c => GlanceCardWidget(card: c),
     final UnsupportedCard c => UnsupportedCardWidget(card: c),
   };
+}
+
+/// Empty surface shown when the fetched Lovelace config's current view has no
+/// cards configured (#62). Mirrors [AppPage]'s shared `_EmptyState` (themed
+/// icon + message, centred) but swaps the generic inbox icon for a
+/// dashboard/layout-related one and spells out *why* nothing is showing —
+/// the view was fetched successfully, it just has no cards yet — so a blank
+/// screen reads as an expected state rather than a broken fetch.
+class _NoDashboardCardsEmptyState extends StatelessWidget {
+  const _NoDashboardCardsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.dashboard_customize_outlined,
+              size: 48,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No dashboard cards yet',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This view was fetched from Home Assistant, but it has no '
+              'cards configured. Add some to your Lovelace dashboard and '
+              'they will show up here.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
