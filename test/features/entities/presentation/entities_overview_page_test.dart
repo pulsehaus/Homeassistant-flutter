@@ -173,4 +173,87 @@ void main() {
       expect(find.textContaining('ago'), findsNothing);
     },
   );
+
+  group('search field (#77)', () {
+    Widget harnessWithEntities() => _harness(
+      Stream.value(
+        _store([
+          _entity('light.kitchen', friendlyName: 'Kitchen Light'),
+          _entity('light.living_room', friendlyName: 'Living Room Lamp'),
+          _entity(
+            'sensor.temperature',
+            state: '21.4',
+            friendlyName: 'Outside Temperature',
+          ),
+        ]),
+      ),
+    );
+
+    testWidgets('is visible above the entities list', (tester) async {
+      await tester.pumpWidget(harnessWithEntities());
+      await tester.pump();
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.text('Search entities'), findsOneWidget);
+    });
+
+    testWidgets('typing filters entities by name, case-insensitively', (
+      tester,
+    ) async {
+      await tester.pumpWidget(harnessWithEntities());
+      await tester.pump();
+
+      expect(find.text('Kitchen Light'), findsOneWidget);
+      expect(find.text('Living Room Lamp'), findsOneWidget);
+      expect(find.text('Outside Temperature'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'kitchen');
+      await tester.pump();
+
+      expect(find.text('Kitchen Light'), findsOneWidget);
+      expect(find.text('Living Room Lamp'), findsNothing);
+      expect(find.text('Outside Temperature'), findsNothing);
+    });
+
+    testWidgets('typing filters entities by entity id', (tester) async {
+      await tester.pumpWidget(harnessWithEntities());
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextField), 'sensor.temperature');
+      await tester.pump();
+
+      expect(find.text('Outside Temperature'), findsOneWidget);
+      expect(find.text('Kitchen Light'), findsNothing);
+      expect(find.text('Living Room Lamp'), findsNothing);
+    });
+
+    testWidgets('clearing the field restores the full list', (tester) async {
+      await tester.pumpWidget(harnessWithEntities());
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextField), 'kitchen');
+      await tester.pump();
+      expect(find.text('Living Room Lamp'), findsNothing);
+
+      await tester.enterText(find.byType(TextField), '');
+      await tester.pump();
+
+      expect(find.text('Kitchen Light'), findsOneWidget);
+      expect(find.text('Living Room Lamp'), findsOneWidget);
+      expect(find.text('Outside Temperature'), findsOneWidget);
+    });
+
+    testWidgets('a query matching nothing shows a no-results message', (
+      tester,
+    ) async {
+      await tester.pumpWidget(harnessWithEntities());
+      await tester.pump();
+
+      await tester.enterText(find.byType(TextField), 'nonexistent');
+      await tester.pump();
+
+      expect(find.text('No matching entities'), findsOneWidget);
+      expect(find.text('Kitchen Light'), findsNothing);
+    });
+  });
 }

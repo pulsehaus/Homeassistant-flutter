@@ -18,11 +18,36 @@ import '../domain/relative_time.dart';
 /// surfaces (#3). Because the underlying store is a stream, the list rebuilds
 /// live as `state_changed` events arrive. The grouping/sorting itself is the
 /// pure [groupEntitiesByDomain]; this widget stays a thin renderer.
-class EntitiesOverviewPage extends ConsumerWidget {
+///
+/// A search field above the list lets the user narrow entities by name or
+/// entity id (#77). The query is local UI state — it doesn't affect what the
+/// live store holds, only what this screen renders — so it's a
+/// [ConsumerStatefulWidget] rather than a Riverpod provider. Filtering itself
+/// is the pure [filterEntityGroups], applied to the already-grouped data.
+class EntitiesOverviewPage extends ConsumerStatefulWidget {
   const EntitiesOverviewPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EntitiesOverviewPage> createState() =>
+      _EntitiesOverviewPageState();
+}
+
+class _EntitiesOverviewPageState extends ConsumerState<EntitiesOverviewPage> {
+  final _searchController = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() => _query = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final groups = ref.watch(entityGroupsProvider);
 
     return AppPage.async<List<EntityGroup>>(
@@ -31,7 +56,101 @@ class EntitiesOverviewPage extends ConsumerWidget {
       isEmpty: (data) => data.isEmpty,
       emptyBuilder: (context) => const _NoEntitiesEmptyState(),
       connectionIndicator: const ConnectionStatusIndicator(),
-      builder: (context, data) => _EntitiesList(groups: data),
+      builder: (context, data) {
+        final filtered = filterEntityGroups(data, _query);
+        return Column(
+          children: [
+            _EntitySearchField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+            ),
+            Expanded(
+              child: filtered.isEmpty
+                  ? const _NoSearchResultsEmptyState()
+                  : _EntitiesList(groups: filtered),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Search field shown above the entities list, filtering by name or entity id
+/// as the user types (#77).
+class _EntitySearchField extends StatelessWidget {
+  const _EntitySearchField({required this.controller, required this.onChanged});
+
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          hintText: 'Search entities',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: controller.text.isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    controller.clear();
+                    onChanged('');
+                  },
+                ),
+          isDense: true,
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Empty surface shown when a search query matches no entities, distinct from
+/// [_NoEntitiesEmptyState] (which covers the store being genuinely empty) so
+/// the message reflects a filter the user can clear rather than a connection
+/// issue.
+class _NoSearchResultsEmptyState extends StatelessWidget {
+  const _NoSearchResultsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 48,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No matching entities',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try a different name or entity id.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
