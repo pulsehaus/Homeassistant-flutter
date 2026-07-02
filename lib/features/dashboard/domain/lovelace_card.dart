@@ -333,6 +333,35 @@ class GlanceCard extends LovelaceCard {
       'columns: $columns)';
 }
 
+/// A climate card (`type: climate`): a thermostat/AC/heat-pump entity with
+/// basic HVAC control — current + target temperature and `hvac_mode`.
+///
+/// Only the entity id and an optional display name are modelled here (the
+/// same minimal shape as [EntityCard]/[GaugeCard]): current temperature,
+/// target temperature and the available `hvac_modes` all come from the live
+/// entity's state/attributes at render time ([ClimateCardWidget]), not from
+/// the Lovelace config.
+class ClimateCard extends LovelaceCard {
+  const ClimateCard({required this.entityId, this.name});
+
+  /// The climate entity this card controls, e.g. `climate.living_room`.
+  final String entityId;
+
+  /// An explicit display name from the config, or null to fall back to the
+  /// entity's friendly name / id at render time.
+  final String? name;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ClimateCard && other.entityId == entityId && other.name == name;
+
+  @override
+  int get hashCode => Object.hash(entityId, name);
+
+  @override
+  String toString() => 'ClimateCard($entityId, name: $name)';
+}
+
 /// The graceful-degradation card: produced for any card whose `type` is unknown,
 /// missing, or whose (known) body is malformed. Rendering it shows a muted
 /// placeholder instead of crashing, so an unsupported card never breaks the page.

@@ -105,6 +105,10 @@ LovelaceCard cardFromJson(Map<String, dynamic> json) {
           showState: json['show_state'] as bool? ?? true,
           columns: (json['columns'] as num?)?.toInt(),
         );
+      case 'climate':
+        final id = json['entity'];
+        if (id is! String) return UnsupportedCard(type: type);
+        return ClimateCard(entityId: id, name: json['name'] as String?);
       default:
         return UnsupportedCard(type: type);
     }
