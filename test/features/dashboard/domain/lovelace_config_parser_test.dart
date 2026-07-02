@@ -268,6 +268,36 @@ void main() {
       expect(card, const GaugeCard(entityId: 'sensor.humidity'));
     });
 
+    test('climate card parses entity and name', () {
+      expect(
+        cardFromJson({
+          'type': 'climate',
+          'entity': 'climate.living_room',
+          'name': 'Living Room',
+        }),
+        const ClimateCard(entityId: 'climate.living_room', name: 'Living Room'),
+      );
+    });
+
+    test('climate card with no explicit name leaves it null', () {
+      expect(
+        cardFromJson({'type': 'climate', 'entity': 'climate.living_room'}),
+        const ClimateCard(entityId: 'climate.living_room'),
+      );
+    });
+
+    test('climate card missing or non-string entity degrades to '
+        'UnsupportedCard', () {
+      expect(
+        cardFromJson({'type': 'climate'}),
+        const UnsupportedCard(type: 'climate'),
+      );
+      expect(
+        cardFromJson({'type': 'climate', 'entity': 42}),
+        const UnsupportedCard(type: 'climate'),
+      );
+    });
+
     test('unknown type degrades to UnsupportedCard carrying the type', () {
       expect(
         cardFromJson({'type': 'thermostat'}),
