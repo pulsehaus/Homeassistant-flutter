@@ -76,6 +76,12 @@ dependencies:
   # fake — see test/features/about.
   package_info_plus: ^8.3.1
 
+  # Bundles the full Material Design Icons set and exposes `iconMap`, a plain
+  # `Map<String, IconData>` keyed by camelCase icon names (e.g. `waterPump`).
+  # Used to resolve HA's `icon: mdi:xxx` config strings to a real IconData —
+  # see lib/features/dashboard/presentation/cards/mdi_icon_resolver.dart.
+  material_design_icons_flutter: ^7.0.7296
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

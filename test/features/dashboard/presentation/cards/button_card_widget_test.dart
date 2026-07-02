@@ -8,6 +8,7 @@ import 'package:homeassistant_flutter/features/connection/domain/entity_state.da
 import 'package:homeassistant_flutter/features/dashboard/domain/lovelace_card.dart';
 import 'package:homeassistant_flutter/features/dashboard/presentation/cards/button_card_widget.dart';
 import 'package:homeassistant_flutter/features/entities/application/entity_toggle_controller.dart';
+import 'package:material_design_icons_flutter/icon_map.dart';
 
 EntityState _entity(String id, {String state = 'off', String? friendlyName}) {
   return EntityState(
@@ -212,6 +213,59 @@ void main() {
     await tester.pump();
 
     expect(find.text('Button'), findsOneWidget);
+  });
+
+  testWidgets('a resolvable mdi:xxx icon renders the real MDI icon', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(
+        card: const ButtonCard(
+          entityId: 'sensor.humidity',
+          icon: 'mdi:water-pump',
+        ),
+        stream: Stream.value(_store([_entity('sensor.humidity')])),
+        controller: _FakeToggleController(const ToggleResult.success()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byIcon(iconMap['waterPump']!), findsOneWidget);
+  });
+
+  testWidgets('an unresolvable icon name falls back gracefully (no crash)', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(
+        card: const ButtonCard(
+          entityId: 'light.kitchen',
+          icon: 'mdi:not-a-real-icon-name',
+        ),
+        stream: Stream.value(_store([_entity('light.kitchen', state: 'off')])),
+        controller: _FakeToggleController(const ToggleResult.success()),
+      ),
+    );
+    await tester.pump();
+
+    // Falls back to the domain-based default for 'light', same as when no
+    // icon is configured at all.
+    expect(find.byIcon(Icons.lightbulb_outline), findsOneWidget);
+  });
+
+  testWidgets('no icon configured keeps the domain-based fallback behaviour', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness(
+        card: const ButtonCard(entityId: 'light.kitchen'),
+        stream: Stream.value(_store([_entity('light.kitchen', state: 'off')])),
+        controller: _FakeToggleController(const ToggleResult.success()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byIcon(Icons.lightbulb_outline), findsOneWidget);
   });
 
   testWidgets('reflects a live state_changed update', (tester) async {
