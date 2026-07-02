@@ -63,30 +63,59 @@ class EntityToggleController {
         error.message?.toString() ?? 'Entity cannot be toggled',
       );
     }
+    return _dispatch(
+      command,
+      describe: (reason) =>
+          _describe(entity, verb: on ? 'turn on' : 'turn off', reason: reason),
+    );
+  }
 
+  /// Request that [entity] (a dimmable light) be set to [brightness] (0-255).
+  ///
+  /// Issues `light.turn_on` with the brightness in `service_data`, the same
+  /// mechanism [toggle] uses for the plain on/off case. Never throws: failures
+  /// come back as a [ToggleFailure] the UI can surface (e.g. a SnackBar).
+  Future<ToggleResult> setBrightness(EntityState entity, int brightness) async {
+    final ToggleCommand command;
+    try {
+      command = EntityToggle.brightnessCommand(entity, brightness);
+    } on ArgumentError catch (error) {
+      return ToggleResult.failure(
+        error.message?.toString() ?? 'Entity does not support brightness',
+      );
+    }
+    return _dispatch(
+      command,
+      describe: (reason) =>
+          _describe(entity, verb: 'set the brightness of', reason: reason),
+    );
+  }
+
+  Future<ToggleResult> _dispatch(
+    ToggleCommand command, {
+    required String Function(String reason) describe,
+  }) async {
     try {
       await _client.callService(
         command.domain,
         command.service,
         target: command.target,
+        data: command.data,
       );
       return const ToggleResult.success();
     } on HaException catch (error) {
-      return ToggleResult.failure(
-        _describe(entity, on: on, reason: error.message),
-      );
+      return ToggleResult.failure(describe(error.message));
     } catch (error) {
-      return ToggleResult.failure(_describe(entity, on: on, reason: '$error'));
+      return ToggleResult.failure(describe('$error'));
     }
   }
 
   String _describe(
     EntityState entity, {
-    required bool on,
+    required String verb,
     required String reason,
   }) {
     final label = entity.friendlyName ?? entity.entityId;
-    final verb = on ? 'turn on' : 'turn off';
     return 'Could not $verb $label: $reason';
   }
 }

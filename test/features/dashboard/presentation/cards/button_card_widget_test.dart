@@ -38,6 +38,11 @@ class _FakeToggleController implements EntityToggleController {
     calls.add((entity.entityId, on));
     return _result;
   }
+
+  @override
+  Future<ToggleResult> setBrightness(EntityState entity, int brightness) async {
+    return _result;
+  }
 }
 
 Widget _harness({

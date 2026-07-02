@@ -11,13 +11,16 @@ final _config = HaConnectionConfig(
   accessToken: 'test-token',
 );
 
-EntityState _entity(String id, {String state = 'off', String? friendlyName}) {
+EntityState _entity(
+  String id, {
+  String state = 'off',
+  String? friendlyName,
+  int? brightness,
+}) {
   return EntityState(
     entityId: id,
     state: state,
-    attributes: friendlyName == null
-        ? const {}
-        : {'friendly_name': friendlyName},
+    attributes: {'friendly_name': ?friendlyName, 'brightness': ?brightness},
   );
 }
 
@@ -120,4 +123,100 @@ void main() {
     expect(result.isSuccess, isFalse);
     expect(socket.sentOfType('call_service'), isEmpty);
   });
+
+  test(
+    'setBrightness issues light.turn_on with brightness in service_data',
+    () async {
+      final (controller, socket) = await _connectedController();
+
+      final future = controller.setBrightness(
+        _entity('light.kitchen', state: 'on', brightness: 50),
+        180,
+      );
+      await pumpEventQueue();
+
+      final call = socket.sentOfType('call_service').last;
+      expect(call['domain'], 'light');
+      expect(call['service'], 'turn_on');
+      expect(call['target'], {'entity_id': 'light.kitchen'});
+      expect(call['service_data'], {'brightness': 180});
+
+      socket.serverSend({
+        'id': call['id'],
+        'type': 'result',
+        'success': true,
+        'result': null,
+      });
+
+      expect((await future).isSuccess, isTrue);
+    },
+  );
+
+  test('setBrightness clamps out-of-range values before sending', () async {
+    final (controller, socket) = await _connectedController();
+
+    final future = controller.setBrightness(
+      _entity('light.kitchen', state: 'on', brightness: 50),
+      500,
+    );
+    await pumpEventQueue();
+
+    final call = socket.sentOfType('call_service').last;
+    expect(call['service_data'], {'brightness': 255});
+
+    socket.serverSend({
+      'id': call['id'],
+      'type': 'result',
+      'success': true,
+      'result': null,
+    });
+    await future;
+  });
+
+  test(
+    'setBrightness on a non-light entity fails fast without a service call',
+    () async {
+      final (controller, socket) = await _connectedController();
+
+      final result = await controller.setBrightness(
+        _entity('switch.fan', state: 'on'),
+        128,
+      );
+
+      expect(result.isSuccess, isFalse);
+      expect(socket.sentOfType('call_service'), isEmpty);
+    },
+  );
+
+  test(
+    'a failed brightness command is surfaced as a ToggleFailure, not thrown',
+    () async {
+      final (controller, socket) = await _connectedController();
+
+      final future = controller.setBrightness(
+        _entity(
+          'light.kitchen',
+          state: 'on',
+          friendlyName: 'Kitchen',
+          brightness: 50,
+        ),
+        180,
+      );
+      await pumpEventQueue();
+
+      final call = socket.sentOfType('call_service').last;
+      socket.serverSend({
+        'id': call['id'],
+        'type': 'result',
+        'success': false,
+        'error': {'code': 'not_found', 'message': 'Entity not found'},
+      });
+
+      final result = await future;
+      expect(result.isSuccess, isFalse);
+      final failure = result as ToggleFailure;
+      expect(failure.message, contains('Kitchen'));
+      expect(failure.message, contains('Entity not found'));
+    },
+  );
 }
