@@ -77,7 +77,14 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.textContaining('No entities yet'), findsOneWidget);
+    expect(find.text('No entities yet'), findsOneWidget);
+    expect(
+      find.textContaining('stream in from Home Assistant'),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.sensors_off), findsOneWidget);
+    // Not the shared template's generic default icon.
+    expect(find.byIcon(Icons.inbox_outlined), findsNothing);
     expect(find.byType(ListView), findsNothing);
   });
 

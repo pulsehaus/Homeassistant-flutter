@@ -28,10 +28,56 @@ class EntitiesOverviewPage extends ConsumerWidget {
       title: 'Entities',
       value: groups,
       isEmpty: (data) => data.isEmpty,
-      emptyMessage:
-          'No entities yet.\nConnect an instance to see its entities here.',
+      emptyBuilder: (context) => const _NoEntitiesEmptyState(),
       connectionIndicator: const ConnectionStatusIndicator(),
       builder: (context, data) => _EntitiesList(groups: data),
+    );
+  }
+}
+
+/// Empty surface shown when the live entity store hasn't produced any
+/// entities yet (#62). Mirrors [AppPage]'s shared `_EmptyState` (themed icon +
+/// message, centred) but swaps the generic inbox icon for one that reads as
+/// "devices/entities" and spells out the two reasons the list can be empty —
+/// still connecting, or the instance genuinely has none — since entities
+/// stream in live and a blank list otherwise reads as broken rather than
+/// empty.
+class _NoEntitiesEmptyState extends StatelessWidget {
+  const _NoEntitiesEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.sensors_off,
+              size: 48,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No entities yet',
+              style: theme.textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Entities appear here as soon as they stream in from Home '
+              'Assistant. If you just connected, give it a moment — '
+              'otherwise this instance may not expose any yet.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
