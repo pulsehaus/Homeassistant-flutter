@@ -143,6 +143,45 @@ void main() {
       final first = (config['series'] as List).first as Map<String, dynamic>;
       expect(first['data'], isEmpty);
     });
+
+    test('yAxis.name carries the series unit when present', () {
+      final config = ChartConfigMapper.build(
+        series: [_series()],
+        type: ChartType.line,
+        theme: _theme(),
+      );
+      expect((config['yAxis'] as Map)['name'], '°C');
+    });
+
+    test('yAxis.name is omitted when no series has a unit', () {
+      final config = ChartConfigMapper.build(
+        series: const [ChartSeries(name: 'no unit', points: [])],
+        type: ChartType.line,
+        theme: _theme(),
+      );
+      expect((config['yAxis'] as Map).containsKey('name'), isFalse);
+    });
+
+    test('yAxis.name is omitted when the unit is an empty string', () {
+      final config = ChartConfigMapper.build(
+        series: const [ChartSeries(name: 'blank unit', points: [], unit: '')],
+        type: ChartType.line,
+        theme: _theme(),
+      );
+      expect((config['yAxis'] as Map).containsKey('name'), isFalse);
+    });
+
+    test('yAxis.name uses the first series that carries a unit', () {
+      final config = ChartConfigMapper.build(
+        series: [
+          const ChartSeries(name: 'no unit', points: []),
+          _series(),
+        ],
+        type: ChartType.line,
+        theme: _theme(),
+      );
+      expect((config['yAxis'] as Map)['name'], '°C');
+    });
   });
 
   group('colorToCss', () {

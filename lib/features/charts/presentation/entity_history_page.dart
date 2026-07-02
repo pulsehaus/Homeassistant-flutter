@@ -152,7 +152,7 @@ class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
                   delegate: SliverChildListDelegate([
                     ?picker,
                     Text(
-                      'Live history for $entityId (last ${period.inHours}h).',
+                      _caption(entityId, period, data.unit),
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 16),
@@ -169,6 +169,15 @@ class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
       },
     );
   }
+}
+
+/// Builds the "Live history for `<entity>`" caption, appending the series'
+/// unit of measurement (e.g. `°C`) in parentheses when one is present. When
+/// [unit] is `null` or empty, the caption is unchanged from before the unit
+/// was surfaced — no stray "null" text.
+String _caption(String entityId, Duration period, String? unit) {
+  final unitSuffix = (unit == null || unit.isEmpty) ? '' : ' ($unit)';
+  return 'Live history for $entityId (last ${period.inHours}h)$unitSuffix.';
 }
 
 /// Empty surface shown when the selected entity has no recorded history for

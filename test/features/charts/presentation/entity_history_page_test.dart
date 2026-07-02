@@ -118,6 +118,46 @@ void main() {
     expect(find.byKey(const ValueKey('fake-webview')), findsOneWidget);
   });
 
+  testWidgets('the caption shows the series unit when present', (tester) async {
+    await tester.pumpWidget(
+      _harness([
+        defaultChartEntityProvider.overrideWithValue('sensor.temp'),
+        entityHistorySeriesProvider.overrideWith(
+          (ref, request) async => _series(),
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Live history for sensor.temp (last 24h) (°C).'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('the caption has no stray unit text when the series has none', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _harness([
+        defaultChartEntityProvider.overrideWithValue('sensor.temp'),
+        entityHistorySeriesProvider.overrideWith(
+          (ref, request) async => ChartSeries(
+            name: 'sensor.temp',
+            points: [TimeSeriesPoint(time: DateTime.utc(2026), value: 1)],
+          ),
+        ),
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Live history for sensor.temp (last 24h).'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('null'), findsNothing);
+  });
+
   testWidgets('defaults to the 24h range and shows the three options', (
     tester,
   ) async {
