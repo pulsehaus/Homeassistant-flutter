@@ -120,4 +120,67 @@ void main() {
       expect(a, isNot(equals(c)));
     });
   });
+
+  group('filterEntityGroups', () {
+    late List<EntityGroup> groups;
+
+    setUp(() {
+      groups = groupEntitiesByDomain(
+        store([
+          entity('light.kitchen', friendlyName: 'Kitchen Light'),
+          entity('light.living_room', friendlyName: 'Living Room Lamp'),
+          entity('sensor.temperature', friendlyName: 'Outside Temperature'),
+          entity('switch.fan'),
+        ]),
+      );
+    });
+
+    test('a blank query returns the groups unchanged', () {
+      expect(filterEntityGroups(groups, ''), same(groups));
+      expect(filterEntityGroups(groups, '   '), same(groups));
+    });
+
+    test('matches by friendly name, case-insensitively', () {
+      final filtered = filterEntityGroups(groups, 'kitchen');
+
+      expect(filtered.map((g) => g.domain), ['light']);
+      expect(filtered.single.entities.map((e) => e.entityId), [
+        'light.kitchen',
+      ]);
+    });
+
+    test('matches by entity id when no friendly name matches', () {
+      final filtered = filterEntityGroups(groups, 'switch.fan');
+
+      expect(filtered.single.entities.map((e) => e.entityId), ['switch.fan']);
+    });
+
+    test('matches a substring anywhere in the name or id', () {
+      final filtered = filterEntityGroups(groups, 'temp');
+
+      expect(filtered.single.domain, 'sensor');
+      expect(filtered.single.entities.single.entityId, 'sensor.temperature');
+    });
+
+    test('drops groups that end up with no matching entities', () {
+      final filtered = filterEntityGroups(groups, 'kitchen');
+
+      expect(filtered.map((g) => g.domain), isNot(contains('sensor')));
+      expect(filtered.map((g) => g.domain), isNot(contains('switch')));
+    });
+
+    test('a query matching nothing returns an empty list', () {
+      expect(filterEntityGroups(groups, 'nonexistent'), isEmpty);
+    });
+
+    test('a query matching multiple groups keeps all of them', () {
+      final filtered = filterEntityGroups(groups, 'light');
+
+      // "light" matches the light domain's friendly names AND
+      // sensor.temperature's entity id is unaffected, but light.* entity ids
+      // themselves contain "light.".
+      expect(filtered.map((g) => g.domain), ['light']);
+      expect(filtered.single.count, 2);
+    });
+  });
 }

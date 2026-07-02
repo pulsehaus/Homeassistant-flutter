@@ -86,3 +86,38 @@ bool _listEquals<T>(List<T> a, List<T> b) {
   }
   return true;
 }
+
+/// Filters pre-grouped [groups] down to entities whose display label
+/// ([EntityState.friendlyName], falling back to [EntityState.entityId]) or raw
+/// [EntityState.entityId] contains [query] as a case-insensitive substring.
+///
+/// A blank (or all-whitespace) [query] is treated as "no filter" and returns
+/// [groups] unchanged. Groups that end up with no matching entities are
+/// dropped entirely, so an empty search result renders no section headers.
+///
+/// Kept as a pure function over the already-grouped/sorted data (rather than
+/// re-deriving grouping) so it stays trivially unit-testable and independent
+/// of how [groups] was produced — see #77.
+List<EntityGroup> filterEntityGroups(List<EntityGroup> groups, String query) {
+  final trimmed = query.trim().toLowerCase();
+  if (trimmed.isEmpty) return groups;
+
+  return [
+    for (final group in groups)
+      if (_matchingEntities(group.entities, trimmed) case final matches
+          when matches.isNotEmpty)
+        EntityGroup(domain: group.domain, entities: matches),
+  ];
+}
+
+List<EntityState> _matchingEntities(List<EntityState> entities, String query) {
+  return [
+    for (final entity in entities)
+      if (_matches(entity, query)) entity,
+  ];
+}
+
+bool _matches(EntityState entity, String query) {
+  return _displayLabel(entity).toLowerCase().contains(query) ||
+      entity.entityId.toLowerCase().contains(query);
+}
