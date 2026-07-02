@@ -172,8 +172,12 @@ class _DomainHeader extends StatelessWidget {
 ///
 /// For controllable entities ([EntityToggle.isToggleable] — `light`, `switch`)
 /// the trailing edge is a [Switch] that issues a `call_service`; for everything
-/// else it's the read-only state text. A [ConsumerWidget] so the toggle can read
-/// the [entityToggleControllerProvider].
+/// else it's the read-only state text. Dimmable lights ([EntityToggle.isDimmable]
+/// — a `light` reporting a `brightness` attribute) additionally show a
+/// brightness [Slider] beneath the title row, alongside the on/off switch
+/// rather than replacing it, so the switch keeps its familiar quick on/off
+/// behavior and the slider is purely an extra level of control (#75). A
+/// [ConsumerWidget] so both controls can read the [entityToggleControllerProvider].
 class _EntityTile extends ConsumerStatefulWidget {
   const _EntityTile({required this.entity});
 
@@ -189,6 +193,11 @@ class _EntityTileState extends ConsumerState<_EntityTile> {
   /// reconciles with the entity's true state.
   bool? _pending;
 
+  /// Optimistic brightness (0-255) shown while a slider drag is in flight.
+  /// Cleared once the real `state_changed` arrives (or on failure), mirroring
+  /// [_pending] for the on/off switch.
+  int? _pendingBrightness;
+
   EntityState get _entity => widget.entity;
 
   @override
@@ -198,6 +207,10 @@ class _EntityTileState extends ConsumerState<_EntityTile> {
     // once it matches what we asked for (or whenever a new state supersedes it).
     if (_pending != null && EntityToggle.isOn(_entity) == _pending) {
       _pending = null;
+    }
+    if (_pendingBrightness != null &&
+        EntityToggle.brightness(_entity) == _pendingBrightness) {
+      _pendingBrightness = null;
     }
   }
 
@@ -210,11 +223,28 @@ class _EntityTileState extends ConsumerState<_EntityTile> {
     if (!result.isSuccess) {
       // Roll the optimistic position back and surface the reason.
       setState(() => _pending = null);
-      final message = (result as ToggleFailure).message;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(message)));
+      _showFailure(result);
     }
+  }
+
+  Future<void> _onBrightnessChanged(double value) async {
+    final brightness = value.round();
+    setState(() => _pendingBrightness = brightness);
+    final result = await ref
+        .read(entityToggleControllerProvider)
+        .setBrightness(_entity, brightness);
+    if (!mounted) return;
+    if (!result.isSuccess) {
+      setState(() => _pendingBrightness = null);
+      _showFailure(result);
+    }
+  }
+
+  void _showFailure(ToggleResult result) {
+    final message = (result as ToggleFailure).message;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -223,6 +253,7 @@ class _EntityTileState extends ConsumerState<_EntityTile> {
     final name = _entity.friendlyName;
     final hasName = name != null && name.trim().isNotEmpty;
     final toggleable = EntityToggle.isToggleable(_entity);
+    final dimmable = EntityToggle.isDimmable(_entity);
 
     return ListTile(
       dense: true,
@@ -232,7 +263,13 @@ class _EntityTileState extends ConsumerState<_EntityTile> {
         overflow: TextOverflow.ellipsis,
       ),
       // Only show the id as a subtitle when it isn't already the title.
-      subtitle: hasName
+      subtitle: dimmable
+          ? _BrightnessSlider(
+              value: _pendingBrightness ?? EntityToggle.brightness(_entity)!,
+              onChanged: _onBrightnessChanged,
+              entityIdLabel: hasName ? _entity.entityId : null,
+            )
+          : hasName
           ? Text(
               _entity.entityId,
               maxLines: 1,
@@ -253,6 +290,62 @@ class _EntityTileState extends ConsumerState<_EntityTile> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+    );
+  }
+}
+
+/// The brightness row shown under a dimmable light's title: the entity id
+/// (when it isn't already the title, matching the plain-toggle layout) and a
+/// [Slider] spanning the 0-255 HA brightness range.
+///
+/// Kept as its own widget so [_EntityTileState] stays focused on state
+/// management rather than layout.
+class _BrightnessSlider extends StatelessWidget {
+  const _BrightnessSlider({
+    required this.value,
+    required this.onChanged,
+    required this.entityIdLabel,
+  });
+
+  /// Current (or optimistic) brightness, 0-255.
+  final int value;
+
+  /// Called with the new 0-255 brightness whenever the slider moves.
+  final ValueChanged<double> onChanged;
+
+  /// The entity id to show above the slider, or null when the title already
+  /// shows it (mirrors the plain-toggle subtitle rule).
+  final String? entityIdLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (entityIdLabel != null)
+          Text(
+            entityIdLabel!,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        SliderTheme(
+          data: SliderTheme.of(
+            context,
+          ).copyWith(trackHeight: 2, padding: EdgeInsets.zero),
+          child: Slider(
+            value: value.clamp(0, 255).toDouble(),
+            min: 0,
+            max: 255,
+            label: '$value',
+            onChanged: onChanged,
+          ),
+        ),
+      ],
     );
   }
 }
