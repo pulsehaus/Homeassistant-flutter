@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../connection/application/connection_providers.dart';
 import '../../connection/domain/entity_state.dart';
+import '../data/chart_selection_store.dart';
 import '../data/entity_history_repository.dart';
 import '../domain/chart_series.dart';
+import '../domain/history_range.dart';
 
 /// The repository that turns HA history into [ChartSeries], wired to the shared
 /// REST client from the connection layer (#2).
@@ -83,13 +85,69 @@ final defaultChartEntityProvider = Provider<String?>((ref) {
   return numericSensors.isEmpty ? null : numericSensors.first;
 }, dependencies: [numericSensorEntitiesProvider]);
 
-/// The entity explicitly chosen by the user via the picker on
+/// The store backing the user's chart selections (entity + range, #61).
+/// Overridden in tests with a fake so no real platform storage is touched.
+///
+/// This is plain UI/local-storage state — unrelated to the Home Assistant
+/// connection graph — so, unlike the connection providers, it does not need
+/// scoped `dependencies`.
+final chartSelectionStoreProvider = Provider<ChartSelectionStore>(
+  (ref) => SharedPreferencesChartSelectionStore(),
+);
+
+/// Owns the entity explicitly chosen by the user via the picker on
 /// [entity_history_page], or null when nothing has been picked yet (in which
 /// case the screen falls back to [defaultChartEntityProvider]).
 ///
-/// Deliberately a plain [StateProvider]: it holds ephemeral UI selection, not
-/// domain state, so it has no `dependencies` on the connection providers.
-final selectedChartEntityProvider = StateProvider<String?>((ref) => null);
+/// On startup it loads any previously chosen entity id from local storage
+/// (#61) so the selection survives an app restart; a fresh install (or one
+/// that never selected anything) starts at `null`, matching today's default
+/// behaviour. Every change is persisted immediately.
+class SelectedChartEntityController extends AsyncNotifier<String?> {
+  ChartSelectionStore get _store => ref.read(chartSelectionStoreProvider);
+
+  @override
+  Future<String?> build() async => await _store.readEntityId();
+
+  /// Select [entityId] (or clear the selection with `null`) and persist it.
+  Future<void> select(String? entityId) async {
+    state = AsyncData(entityId);
+    await _store.writeEntityId(entityId);
+  }
+}
+
+/// Exposes the user's explicitly selected chart entity id, persisted via
+/// [SelectedChartEntityController].
+final selectedChartEntityProvider =
+    AsyncNotifierProvider<SelectedChartEntityController, String?>(
+      SelectedChartEntityController.new,
+    );
+
+/// Owns the trailing [HistoryRange] selected on the history screen (#21).
+///
+/// On startup it loads any previously chosen range from local storage (#61),
+/// defaulting to [HistoryRange.hours24] when nothing has been stored yet —
+/// matching today's default behaviour. Every change is persisted immediately.
+class SelectedHistoryRangeController extends AsyncNotifier<HistoryRange> {
+  ChartSelectionStore get _store => ref.read(chartSelectionStoreProvider);
+
+  @override
+  Future<HistoryRange> build() async =>
+      await _store.readRange() ?? HistoryRange.hours24;
+
+  /// Select [range] and persist it.
+  Future<void> select(HistoryRange range) async {
+    state = AsyncData(range);
+    await _store.writeRange(range);
+  }
+}
+
+/// Exposes the user's selected [HistoryRange], persisted via
+/// [SelectedHistoryRangeController].
+final selectedHistoryRangeProvider =
+    AsyncNotifierProvider<SelectedHistoryRangeController, HistoryRange>(
+      SelectedHistoryRangeController.new,
+    );
 
 bool _isNumeric(String state) => double.tryParse(state) != null;
 

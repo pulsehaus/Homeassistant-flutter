@@ -6,26 +6,10 @@ import '../../../shared/presentation/page_state.dart';
 import '../../connection/presentation/connection_status_indicator.dart';
 import '../application/chart_providers.dart';
 import '../domain/chart_series.dart';
+import '../domain/history_range.dart';
 import 'time_series_chart.dart';
 
-/// The trailing windows offered by the history screen's range selector.
-///
-/// Each option maps 1:1 to a [Duration] fed into [EntityHistoryRequest.period]
-/// — switching options re-keys the [entityHistorySeriesProvider] family, so
-/// Riverpod fetches (and independently caches) the new window.
-enum HistoryRange {
-  hour1(Duration(hours: 1), '1h'),
-  hours24(Duration(hours: 24), '24h'),
-  days7(Duration(days: 7), '7d');
-
-  const HistoryRange(this.period, this.label);
-
-  /// The trailing window this option represents.
-  final Duration period;
-
-  /// Short label shown on the selector segment.
-  final String label;
-}
+export '../domain/history_range.dart' show HistoryRange;
 
 /// Screen that renders a *real* Home Assistant entity's recorded history as a
 /// chart, replacing the static sample example (#13).
@@ -36,38 +20,35 @@ enum HistoryRange {
 /// live entity store ([numericSensorEntitiesProvider]) so the user can pick
 /// which one to chart; the choice is held in [selectedChartEntityProvider].
 /// A [HistoryRange] selector (1h / 24h / 7d, #21) lets the user pick the
-/// trailing window: the selected option becomes the `period` on the
-/// [EntityHistoryRequest] key, so changing it re-fetches (and caches) the
-/// chart for that window. Either way, the resolved entity's trailing history
-/// is fetched through [entityHistorySeriesProvider] and handed to
-/// [AppPage.async] so loading, error and empty states all use the shared
-/// template surfaces (#3). The chart itself is the unchanged
+/// trailing window, held in [selectedHistoryRangeProvider]: the selected
+/// option becomes the `period` on the [EntityHistoryRequest] key, so changing
+/// it re-fetches (and caches) the chart for that window. Both selections are
+/// persisted locally (#61) via [chartSelectionStoreProvider], so they survive
+/// an app restart — a fresh install (nothing stored yet) keeps today's
+/// defaults (first numeric sensor / 24h). Either way, the resolved entity's
+/// trailing history is fetched through [entityHistorySeriesProvider] and
+/// handed to [AppPage.async] so loading, error and empty states all use the
+/// shared template surfaces (#3). The chart itself is the unchanged
 /// [TimeSeriesChart] wrapper — only the data source is new.
 /// The content is also wrapped in a [RefreshIndicator] (#32): pulling down
 /// re-fetches the same [entityHistorySeriesProvider] family member the manual
 /// refresh [IconButton] already invalidates, via `ref.refresh(...future)` so
 /// `onRefresh` completes once the new data (or error) has landed.
-class EntityHistoryPage extends ConsumerStatefulWidget {
-  const EntityHistoryPage({
-    super.key,
-    this.initialRange = HistoryRange.hours24,
-  });
-
-  /// Range selected on first load. Defaults to 24h, matching the existing
-  /// [EntityHistoryRequest] default.
-  final HistoryRange initialRange;
+class EntityHistoryPage extends ConsumerWidget {
+  const EntityHistoryPage({super.key});
 
   @override
-  ConsumerState<EntityHistoryPage> createState() => _EntityHistoryPageState();
-}
-
-class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
-  late HistoryRange _range = widget.initialRange;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final numericSensors = ref.watch(numericSensorEntitiesProvider);
-    final selected = ref.watch(selectedChartEntityProvider);
+    // Both selections are restored asynchronously from local storage (#61).
+    // While that read is in flight (effectively instant on native, briefly
+    // async on web) `valueOrNull` yields null/the range default so the screen
+    // renders with today's defaults instead of an extra loading surface; it
+    // then rebuilds once the stored value lands.
+    final selected = ref.watch(selectedChartEntityProvider).valueOrNull;
+    final range =
+        ref.watch(selectedHistoryRangeProvider).valueOrNull ??
+        HistoryRange.hours24;
     // Fall back to the default entity when nothing has been explicitly
     // selected yet, or the previous selection is no longer numeric/known.
     final defaultEntityId = ref.watch(defaultChartEntityProvider);
@@ -90,7 +71,7 @@ class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
                   DropdownMenuItem(value: id, child: Text(id)),
               ],
               onChanged: (value) =>
-                  ref.read(selectedChartEntityProvider.notifier).state = value,
+                  ref.read(selectedChartEntityProvider.notifier).select(value),
             ),
           );
 
@@ -108,7 +89,7 @@ class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
       );
     }
 
-    final period = _range.period;
+    final period = range.period;
     final request = EntityHistoryRequest(entityId: entityId, period: period);
     final series = ref.watch(entityHistorySeriesProvider(request));
 
@@ -123,12 +104,13 @@ class _EntityHistoryPageState extends ConsumerState<EntityHistoryPage> {
       actions: [
         SegmentedButton<HistoryRange>(
           segments: [
-            for (final range in HistoryRange.values)
-              ButtonSegment(value: range, label: Text(range.label)),
+            for (final r in HistoryRange.values)
+              ButtonSegment(value: r, label: Text(r.label)),
           ],
-          selected: {_range},
-          onSelectionChanged: (selection) =>
-              setState(() => _range = selection.first),
+          selected: {range},
+          onSelectionChanged: (selection) => ref
+              .read(selectedHistoryRangeProvider.notifier)
+              .select(selection.first),
         ),
         const SizedBox(width: 12),
         IconButton(
