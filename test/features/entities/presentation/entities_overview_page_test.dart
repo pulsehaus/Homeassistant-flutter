@@ -7,13 +7,19 @@ import 'package:homeassistant_flutter/features/connection/application/connection
 import 'package:homeassistant_flutter/features/connection/domain/entity_state.dart';
 import 'package:homeassistant_flutter/features/entities/presentation/entities_overview_page.dart';
 
-EntityState _entity(String id, {String state = 'on', String? friendlyName}) {
+EntityState _entity(
+  String id, {
+  String state = 'on',
+  String? friendlyName,
+  DateTime? lastUpdated,
+}) {
   return EntityState(
     entityId: id,
     state: state,
     attributes: friendlyName == null
         ? const {}
         : {'friendly_name': friendlyName},
+    lastUpdated: lastUpdated,
   );
 }
 
@@ -130,6 +136,43 @@ void main() {
     expect(find.text('21.5'), findsOneWidget);
     expect(find.text('20.1'), findsNothing);
   });
+
+  testWidgets('shows a relative last-changed time on a tile (#78)', (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    await tester.pumpWidget(
+      _harness(
+        Stream.value(
+          _store([
+            _entity(
+              'sensor.temperature',
+              state: '21.4',
+              friendlyName: 'Temperature',
+              lastUpdated: now.subtract(const Duration(minutes: 2)),
+            ),
+          ]),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('2 minutes ago'), findsOneWidget);
+  });
+
+  testWidgets(
+    'omits the relative-time label when the entity has no timestamp',
+    (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          Stream.value(_store([_entity('sensor.temperature', state: '21.4')])),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.textContaining('ago'), findsNothing);
+    },
+  );
 
   group('search field (#77)', () {
     Widget harnessWithEntities() => _harness(

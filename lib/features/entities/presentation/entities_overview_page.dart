@@ -8,6 +8,7 @@ import '../application/entities_providers.dart';
 import '../application/entity_toggle_controller.dart';
 import '../domain/entity_group.dart';
 import '../domain/entity_toggle.dart';
+import '../domain/relative_time.dart';
 
 /// Overview screen listing every known entity from the live store, grouped into
 /// per-domain sections (`light`, `sensor`, `switch`, …).
@@ -295,7 +296,10 @@ class _DomainHeader extends StatelessWidget {
 /// — a `light` reporting a `brightness` attribute) additionally show a
 /// brightness [Slider] beneath the title row, alongside the on/off switch
 /// rather than replacing it, so the switch keeps its familiar quick on/off
-/// behavior and the slider is purely an extra level of control (#75). A
+/// behavior and the slider is purely an extra level of control (#75). Below the
+/// control, a small relative-time label (e.g. "2 minutes ago", via
+/// [RelativeTime]) shows how long ago the entity last changed/updated (#78), so
+/// it's easy to tell whether a sensor is actually still reporting. A
 /// [ConsumerWidget] so both controls can read the [entityToggleControllerProvider].
 class _EntityTile extends ConsumerStatefulWidget {
   const _EntityTile({required this.entity});
@@ -398,17 +402,59 @@ class _EntityTileState extends ConsumerState<_EntityTile> {
               ),
             )
           : null,
-      trailing: toggleable
-          ? Switch(
-              value: _pending ?? EntityToggle.isOn(_entity),
-              onChanged: _onToggle,
-            )
-          : Text(
-              _entity.state,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+      trailing: _EntityTrailing(
+        control: toggleable
+            ? Switch(
+                value: _pending ?? EntityToggle.isOn(_entity),
+                onChanged: _onToggle,
+              )
+            : Text(
+                _entity.state,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
+        lastChanged: _entity.lastUpdated ?? _entity.lastChanged,
+      ),
+    );
+  }
+}
+
+/// The tile's trailing edge: the entity's [control] (a [Switch] or its state
+/// as text) plus, beneath it, a small relative-time label derived from
+/// [lastChanged] via [RelativeTime] (e.g. "2 minutes ago") (#78). The label is
+/// omitted when HA hasn't reported a timestamp for this entity.
+///
+/// Kept as its own widget so [_EntityTileState] stays focused on state
+/// management rather than layout, mirroring [_BrightnessSlider] below.
+class _EntityTrailing extends StatelessWidget {
+  const _EntityTrailing({required this.control, required this.lastChanged});
+
+  /// The entity's primary control: a [Switch] for toggleable entities, or its
+  /// current state as read-only text.
+  final Widget control;
+
+  /// The timestamp to render as a relative age, or null when the entity
+  /// hasn't reported one.
+  final DateTime? lastChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final lastChanged = this.lastChanged;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        control,
+        if (lastChanged != null)
+          Text(
+            RelativeTime.format(lastChanged),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
+          ),
+      ],
     );
   }
 }

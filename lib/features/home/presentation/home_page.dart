@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/theme_mode_toggle.dart';
-import '../../../features/about/presentation/about_action.dart';
 import '../../../features/connection/presentation/connection_status_indicator.dart';
-import '../../../features/connection/presentation/disconnect_action.dart';
+import '../../../features/settings/presentation/settings_action.dart';
 import '../../../shared/presentation/app_page.dart';
 import '../application/counter_controller.dart';
 
@@ -25,7 +23,10 @@ class HomePage extends ConsumerWidget {
 
     return AppPage(
       title: 'Home Assistant',
-      actions: const [ThemeModeToggle(), AboutAction(), DisconnectAction()],
+      // The theme toggle, About and disconnect actions used to each get their
+      // own app-bar icon; they're now consolidated behind a single Settings
+      // icon (#76) — see SettingsPage for where they moved to.
+      actions: const [SettingsAction()],
       connectionIndicator: const ConnectionStatusIndicator(),
       floatingActionButton: FloatingActionButton(
         onPressed: () =>
