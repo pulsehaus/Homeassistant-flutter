@@ -237,4 +237,105 @@ void main() {
     expect(find.text('Living'), findsNothing);
     expect(find.text('Kitchen'), findsWidgets);
   });
+
+  testWidgets(
+    'pulling to refresh re-fetches the dashboard config (single view)',
+    (tester) async {
+      var fetchCount = 0;
+      const config = LovelaceConfig(
+        views: [
+          LovelaceView(cards: [EntityCard(entityId: 'sensor.temperature')]),
+        ],
+      );
+
+      await tester.pumpWidget(
+        _harness([
+          dashboardConfigStreamProvider.overrideWith((ref) async* {
+            fetchCount++;
+            yield config;
+          }),
+          entityStatesProvider.overrideWith(
+            (ref) => Stream.value(
+              _store([
+                _entity(
+                  'sensor.temperature',
+                  state: '21.4',
+                  friendlyName: 'Temperature',
+                ),
+              ]),
+            ),
+          ),
+        ]),
+      );
+      await tester.pumpAndSettle();
+      expect(fetchCount, 1);
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+
+      // Drag down from the top of the RefreshIndicator to trigger a
+      // pull-to-refresh, then let the indicator's animation settle.
+      await tester.fling(
+        find.byType(RefreshIndicator),
+        const Offset(0, 300),
+        1000,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(fetchCount, 2);
+    },
+  );
+
+  testWidgets(
+    'pulling to refresh re-fetches the dashboard config (tabbed views)',
+    (tester) async {
+      var fetchCount = 0;
+      const config = LovelaceConfig(
+        views: [
+          LovelaceView(
+            title: 'Living Room',
+            cards: [EntityCard(entityId: 'light.living')],
+          ),
+          LovelaceView(
+            title: 'Kitchen',
+            cards: [EntityCard(entityId: 'light.kitchen')],
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        _harness([
+          dashboardConfigStreamProvider.overrideWith((ref) async* {
+            fetchCount++;
+            yield config;
+          }),
+          entityStatesProvider.overrideWith(
+            (ref) => Stream.value(
+              _store([
+                _entity('light.living', state: 'on', friendlyName: 'Living'),
+                _entity('light.kitchen', state: 'off', friendlyName: 'Kitchen'),
+              ]),
+            ),
+          ),
+        ]),
+      );
+      await tester.pumpAndSettle();
+      expect(fetchCount, 1);
+      expect(find.byType(TabBar), findsOneWidget);
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+
+      // Drag down from the top of the active tab's RefreshIndicator to
+      // trigger a pull-to-refresh, then let the indicator's animation settle.
+      await tester.fling(
+        find.byType(RefreshIndicator),
+        const Offset(0, 300),
+        1000,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(fetchCount, 2);
+    },
+  );
 }

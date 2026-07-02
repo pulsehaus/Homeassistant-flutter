@@ -28,6 +28,17 @@ import 'cards/unsupported_card_widget.dart';
 /// needs a [TickerProvider], hence [SingleTickerProviderStateMixin] — and to
 /// rebuild it if the fetched config's view count ever changes across a config
 /// reload (rare, but cheap to handle correctly).
+///
+/// Each rendered view is individually wrapped in a [RefreshIndicator] (#60,
+/// see [_ViewCards]), mirroring #32's [EntityHistoryPage]: pulling down calls
+/// `ref.refresh(dashboardConfigStreamProvider.future)` so the manual
+/// Retry-on-error path also has an on-demand refresh while data is showing.
+/// It has to wrap each view individually rather than the outer `TabBarView`
+/// — [RefreshIndicator] only reacts to scroll notifications with `depth == 0`
+/// (its *nearest* [Scrollable] descendant), and [TabBarView] itself is
+/// backed by a [PageView], i.e. a [Scrollable] that would otherwise sit
+/// between the indicator and each tab's [ListView] and swallow the
+/// notification.
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
@@ -77,41 +88,71 @@ class _DashboardPageState extends ConsumerState<DashboardPage>
           return _ViewCards(view: c.firstView!);
         }
 
-        final tabController = _controllerFor(views.length);
-        return Column(
-          children: [
-            TabBar(
-              controller: tabController,
-              isScrollable: true,
-              tabs: [
-                for (var i = 0; i < views.length; i++)
-                  Tab(text: views[i].title ?? 'View ${i + 1}'),
-              ],
-            ),
-            Expanded(
-              child: TabBarView(
-                controller: tabController,
-                children: [for (final view in views) _ViewCards(view: view)],
-              ),
-            ),
-          ],
+        return _TabbedViews(
+          views: views,
+          tabController: _controllerFor(views.length),
         );
       },
     );
   }
 }
 
+/// Renders the [TabBar] + [TabBarView] chrome for a multi-view config.
+///
+/// Split out of [_DashboardPageState.build] purely for readability; each tab
+/// is a [_ViewCards], which owns its own [RefreshIndicator] (#60).
+class _TabbedViews extends StatelessWidget {
+  const _TabbedViews({required this.views, required this.tabController});
+
+  final List<LovelaceView> views;
+  final TabController tabController;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TabBar(
+          controller: tabController,
+          isScrollable: true,
+          tabs: [
+            for (var i = 0; i < views.length; i++)
+              Tab(text: views[i].title ?? 'View ${i + 1}'),
+          ],
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: tabController,
+            children: [for (final view in views) _ViewCards(view: view)],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Renders one [LovelaceView]'s cards, in order, through [_cardWidget].
-class _ViewCards extends StatelessWidget {
+///
+/// Wrapped in its own [RefreshIndicator] (#60) — see [DashboardPage]'s doc
+/// comment for why each view owns one instead of a single indicator around
+/// the tabbed content.
+class _ViewCards extends ConsumerWidget {
   const _ViewCards({required this.view});
 
   final LovelaceView view;
 
   @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      children: [for (final card in view.cards) _cardWidget(card)],
+  Widget build(BuildContext context, WidgetRef ref) {
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(dashboardConfigStreamProvider.future),
+      child: ListView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        // Pull-to-refresh (#60) needs a scrollable that always reports as
+        // scrollable to drive the gesture, even when the cards don't overflow
+        // the viewport — same reasoning as EntityHistoryPage's
+        // CustomScrollView (#32).
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [for (final card in view.cards) _cardWidget(card)],
+      ),
     );
   }
 
