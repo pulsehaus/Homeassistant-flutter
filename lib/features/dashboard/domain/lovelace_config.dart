@@ -3,9 +3,9 @@ import 'lovelace_card.dart';
 /// A parsed Lovelace dashboard config.
 ///
 /// Plain immutable value type with no transport or UI dependency, produced by
-/// [parseLovelaceConfig]. The dashboard currently renders only [firstView]; the
-/// remaining views are kept so multi-view support can be added later without
-/// changing the parser.
+/// [parseLovelaceConfig]. `DashboardPage` renders every view in [views],
+/// switching between them via a tab selector when there is more than one;
+/// [firstView] remains the sensible default for a single-view config.
 class LovelaceConfig {
   const LovelaceConfig({this.title, this.views = const []});
 

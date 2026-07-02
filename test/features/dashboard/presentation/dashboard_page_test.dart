@@ -143,4 +143,94 @@ void main() {
     expect(find.text('Something went wrong'), findsOneWidget);
     expect(find.textContaining('config not found'), findsOneWidget);
   });
+
+  testWidgets(
+    'a single-view config shows no tab chrome, just that view\'s cards',
+    (tester) async {
+      const config = LovelaceConfig(
+        title: 'Home',
+        views: [
+          LovelaceView(
+            title: 'Only view',
+            cards: [EntityCard(entityId: 'sensor.temperature')],
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        _harness([
+          dashboardConfigProvider.overrideWithValue(
+            const AsyncValue.data(config),
+          ),
+          entityStatesProvider.overrideWith(
+            (ref) => Stream.value(
+              _store([
+                _entity(
+                  'sensor.temperature',
+                  state: '21.4',
+                  friendlyName: 'Temperature',
+                ),
+              ]),
+            ),
+          ),
+        ]),
+      );
+      await tester.pump();
+
+      // Only one view: no TabBar/Tab chrome, and its title isn't shown as a tab.
+      expect(find.byType(TabBar), findsNothing);
+      expect(find.text('Only view'), findsNothing);
+
+      // The single view's cards render directly.
+      expect(find.text('Temperature'), findsOneWidget);
+    },
+  );
+
+  testWidgets('switching between views renders the correct cards for each', (
+    tester,
+  ) async {
+    const config = LovelaceConfig(
+      title: 'Home',
+      views: [
+        LovelaceView(
+          title: 'Living Room',
+          cards: [EntityCard(entityId: 'light.living')],
+        ),
+        LovelaceView(
+          title: 'Kitchen',
+          cards: [EntityCard(entityId: 'light.kitchen')],
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      _harness([
+        dashboardConfigProvider.overrideWithValue(
+          const AsyncValue.data(config),
+        ),
+        entityStatesProvider.overrideWith(
+          (ref) => Stream.value(
+            _store([
+              _entity('light.living', state: 'on', friendlyName: 'Living'),
+              _entity('light.kitchen', state: 'off', friendlyName: 'Kitchen'),
+            ]),
+          ),
+        ),
+      ]),
+    );
+    await tester.pump();
+
+    // Both tabs are reachable, and the first view's cards render initially.
+    expect(find.byType(TabBar), findsOneWidget);
+    expect(find.text('Living Room'), findsOneWidget);
+    expect(find.text('Kitchen'), findsWidgets);
+    expect(find.text('Living'), findsOneWidget);
+
+    // Switch to the second tab: its cards now render, the first view's don't.
+    await tester.tap(find.widgetWithText(Tab, 'Kitchen'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Living'), findsNothing);
+    expect(find.text('Kitchen'), findsWidgets);
+  });
 }

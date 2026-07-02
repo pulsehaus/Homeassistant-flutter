@@ -16,15 +16,50 @@ import 'cards/unsupported_card_widget.dart';
 
 /// Renders the default Lovelace dashboard fetched from Home Assistant.
 ///
-/// Thin [ConsumerWidget] on [AppPage.async]: [dashboardConfigProvider] feeds the
-/// loading / error / empty surfaces, and the first view's cards are rendered
-/// through [_cardWidget]. Only the first view is shown for now (see the issue's
-/// minimal scope).
-class DashboardPage extends ConsumerWidget {
+/// [ConsumerStatefulWidget] on [AppPage.async]: [dashboardConfigProvider] feeds
+/// the loading / error / empty surfaces, and the selected view's cards are
+/// rendered through [_cardWidget]. When [LovelaceConfig.views] holds more than
+/// one view, a [TabBar] (built from each view's `title`) lets the user switch
+/// between them; a single-view config renders that view directly with no
+/// tab/switcher chrome, matching the pre-#58 behaviour (see the issue).
+///
+/// The state is a [ConsumerStatefulWidget] (rather than the previous
+/// [ConsumerWidget]) purely to own the [TabController] — a [TabController]
+/// needs a [TickerProvider], hence [SingleTickerProviderStateMixin] — and to
+/// rebuild it if the fetched config's view count ever changes across a config
+/// reload (rare, but cheap to handle correctly).
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage>
+    with SingleTickerProviderStateMixin {
+  TabController? _tabController;
+  int _viewCount = 0;
+
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    super.dispose();
+  }
+
+  /// (Re)creates [_tabController] when the number of views changes, so a
+  /// config reload that adds/removes views doesn't crash a stale controller
+  /// (a [TabController]'s `length` is immutable once constructed).
+  TabController _controllerFor(int viewCount) {
+    if (_tabController == null || _viewCount != viewCount) {
+      _tabController?.dispose();
+      _tabController = TabController(length: viewCount, vsync: this);
+      _viewCount = viewCount;
+    }
+    return _tabController!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final config = ref.watch(dashboardConfigProvider);
 
     return AppPage.async<LovelaceConfig>(
@@ -34,10 +69,49 @@ class DashboardPage extends ConsumerWidget {
       emptyMessage: 'No dashboard cards yet.',
       onRetry: () => ref.invalidate(dashboardConfigStreamProvider),
       connectionIndicator: const ConnectionStatusIndicator(),
-      builder: (context, c) => ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        children: [for (final card in c.firstView!.cards) _cardWidget(card)],
-      ),
+      builder: (context, c) {
+        final views = c.views;
+
+        // Common case: a single view. Render it directly with no tab chrome.
+        if (views.length <= 1) {
+          return _ViewCards(view: c.firstView!);
+        }
+
+        final tabController = _controllerFor(views.length);
+        return Column(
+          children: [
+            TabBar(
+              controller: tabController,
+              isScrollable: true,
+              tabs: [
+                for (var i = 0; i < views.length; i++)
+                  Tab(text: views[i].title ?? 'View ${i + 1}'),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: tabController,
+                children: [for (final view in views) _ViewCards(view: view)],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Renders one [LovelaceView]'s cards, in order, through [_cardWidget].
+class _ViewCards extends StatelessWidget {
+  const _ViewCards({required this.view});
+
+  final LovelaceView view;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      children: [for (final card in view.cards) _cardWidget(card)],
     );
   }
 
