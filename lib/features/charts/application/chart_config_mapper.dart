@@ -27,6 +27,13 @@ abstract final class ChartConfigMapper {
     final gridLine = colorToCss(theme.gridLineColor);
     final palette = theme.seriesColors.map(colorToCss).toList();
 
+    // All series on a chart share one y-axis, so a single unit (e.g. `°C`)
+    // labels it; take the first non-empty one. No series carrying a unit
+    // means the axis name is omitted — today's behaviour is unchanged.
+    final unit = series
+        .map((s) => s.unit)
+        .firstWhere((u) => u != null && u.isNotEmpty, orElse: () => null);
+
     return <String, dynamic>{
       'backgroundColor': colorToCss(theme.backgroundColor),
       'color': palette,
@@ -62,6 +69,7 @@ abstract final class ChartConfigMapper {
       },
       'yAxis': <String, dynamic>{
         'type': 'value',
+        'name': ?unit,
         'axisLine': <String, dynamic>{
           'lineStyle': <String, dynamic>{'color': gridLine},
         },
